@@ -2156,7 +2156,23 @@ function startHandoff(owner) {
 
 function togglePolish() {
   const d = draft();
-  if (d.polish) { d.polish = null; ui.polishWarned = false; renderAll(); return; }
+  if (d.polish) {
+    if (d.polish.dirty) {
+      openModal({
+        title: "Discard polish edits?",
+        body: "Hand-edited text will be replaced by the form narrative. This can't be undone.",
+        actions: [
+          { label: "Keep editing", cls: "quiet" },
+          { label: "Discard edits", cls: "danger", onClick: function () {
+              const d = draft();
+              d.polish = null; ui.polishWarned = false; renderAll();
+            } }
+        ]
+      });
+      return;
+    }
+    d.polish = null; ui.polishWarned = false; renderAll(); return;
+  }
   const text = assemblyText(lastAsm || assemble(context()));
   d.polish = { text: text, dirty: false };
   const pv = document.getElementById("preview");
