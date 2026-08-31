@@ -144,11 +144,19 @@ button:active { background: var(--tint); }
 .line-label { font-size: 13px; color: var(--text); }
 .line-hint { font-size: 11px; color: var(--text-faint); font-style: italic; }
 .line-note { font-size: 11px; color: var(--text-faint); }
-.line-inputs { display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; margin-left: 2px; }
-.lit { font-size: 12.5px; color: var(--text-dim); }
-.fld { display: inline-flex; }
-.grp { display: inline-flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; }
-.opt-detail { display: inline-flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; }
+/* Sentence flow: the row is a paragraph, each .clause one thought that never splits mid-thought. */
+.line-inputs { display: block; line-height: 2.2; margin-left: 2px; }
+.clause { display: inline-block; max-width: 100%; vertical-align: top; margin-right: .45em; line-height: 2.2; }
+.clause.clause-fill { display: flex; flex-wrap: wrap; align-items: baseline; width: 100%; column-gap: 0; margin-right: 0; }
+.clause-fill .lit { white-space: pre-wrap; }   /* as flex items literals must keep their own spaces */
+.glue { white-space: nowrap; }   /* a pill or blank and the punctuation that closes it never separate */
+.lit { display: inline; font-size: 12.5px; color: var(--text-dim); }
+.fld { display: inline-flex; align-items: baseline; vertical-align: baseline; }
+.fld-full { flex: 1 1 12em; min-width: 12em; }
+.clause-fill .fill-host { display: flex; flex-wrap: wrap; align-items: baseline; flex: 1 1 100%; min-width: 0; }
+.grp { display: inline; }
+.opt-detail { display: inline; }
+.line-inputs select { vertical-align: baseline; }
 .fork-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .fork-lines { display: flex; flex-direction: column; gap: 9px; margin-left: 14px; padding-left: 10px; border-left: 2px solid var(--border); }
 .line-inputs input[type="text"] { height: 28px; font-size: 13px; }
@@ -167,13 +175,17 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 .seg-btn.on.seg-omit { background: var(--gray-bg); color: var(--gray-text); }
 .seg-btn.on.seg-fired { background: var(--red-bg); color: var(--red-text); font-weight: 500; }
 .seg-btn.on.seg-normal { background: var(--gray-bg); color: var(--gray-text); }
-.pills, .chips { display: inline-flex; gap: 5px; flex-wrap: wrap; }
-.pill, .chip { height: 25px; padding: 0 11px; font-size: 12px; border-radius: 999px; }
+.pills, .chips { display: inline; }
+.pill, .chip { height: 25px; padding: 0 11px; font-size: 12px; border-radius: 999px; vertical-align: baseline; }
+.pills .pill, .chips .chip { margin: 0 2px 0 0; }   /* inline runs wrap between pills, not as a block */
+.pills .pill:last-child, .chips .chip:last-child { margin-right: 0; }   /* punctuation hugs the run */
 .pill.on, .chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 500; }
 .modal-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 /* orientation: derived count + its component pills */
-.aox { display: inline-flex; align-items: center; gap: 5px; }
-.aox-count { display: inline-block; min-width: 1.3em; text-align: center; border-bottom: 1px solid var(--ink); font-weight: 500; padding: 1px 4px; }
+.aox { display: inline; }
+.aox > * { margin-right: 5px; }
+.aox > *:last-child { margin-right: 0; }
+.aox-count { display: inline-block; vertical-align: baseline; min-width: 1.3em; text-align: center; border-bottom: 1px solid var(--ink); font-weight: 500; padding: 1px 4px; }
 .pill.aox-all { border: 1px dotted var(--green-text); color: var(--green-text); background: transparent; }
 
 /* ---- disposition ---- */
@@ -1438,24 +1450,133 @@ function segmented(opts, current, cls, onPick) {
   return wrap;
 }
 
-function partsNodes(parts, line, ctx, host) {
+/**
+ * Parts flow into a host. At TOP level they are grouped into sentence clauses; nested parts
+ * (inside a group, or inside an option's own detail) flow inline within their parent clause.
+ */
+function partsNodes(parts, line, ctx, host, nested) {
+  if (nested) {
+    (parts || []).forEach(function (p) { partNode(p, line, ctx, host); });
+    return;
+  }
+  clauseFlow(parts, line, ctx, host);
+}
+
+/** One part rendered into a host — the leaf renderer, no clause logic. */
+function partNode(p, line, ctx, host) {
+  if (typeof p === "string") { host.appendChild(litNode(p, ctx)); return; }
+  if (p.f) { host.appendChild(fillInput(p, line)); return; }
+  if (p.c) { choiceNodes(p, line, ctx, host); return; }
+  if (p.aox) { aoxNodes(p, line, ctx, host); return; }
+  if (p.g) {
+    const g = el("span", "grp");
+    partsNodes(p.g, line, ctx, g, true);
+    host.appendChild(g);
+  }
+}
+
+function litNode(text, ctx) {
+  const lit = el("span", "lit", replaceAllStr(text, UNIT_TOKEN, ctx.unit));
+  if (text.indexOf(UNIT_TOKEN) >= 0) lit.dataset.lit = text;   // re-substitutable on unit change
+  return lit;
+}
+
+/**
+ * A clause is one sentence-level thought. It shares a row where it fits, takes a fresh row where
+ * it does not, and wraps internally at word boundaries when it is longer than a row — but it is
+ * never broken mid-thought.
+ */
+function clauseFlow(parts, line, ctx, host) {
+  let clause = null;
+  let keep = false;                            // a whitespace-only clause is never emitted
+  function open() {
+    if (!clause) { clause = el("span", "clause"); keep = false; }
+    return clause;
+  }
+  function close() {
+    if (clause && keep) {
+      const full = clause.querySelectorAll(".fld-full");
+      if (full.length) {
+        clause.classList.add("clause-fill");
+        full.forEach(function (f) {          // a group between clause and blank must stretch too
+          let n = f.parentNode;
+          while (n && n !== clause) { n.classList.add("fill-host"); n = n.parentNode; }
+        });
+      }
+      host.appendChild(clause);
+    }
+    clause = null; keep = false;
+  }
   (parts || []).forEach(function (p) {
     if (typeof p === "string") {
-      const lit = el("span", "lit", replaceAllStr(p, UNIT_TOKEN, ctx.unit));
-      if (p.indexOf(UNIT_TOKEN) >= 0) lit.dataset.lit = p;   // re-substitutable on unit change
-      host.appendChild(lit);
+      sentencePieces(p).forEach(function (piece, i) {
+        if (i > 0) close();                    // the piece before this one carried a sentence end
+        if (piece === "") return;
+        const c = open();
+        // Punctuation rides inside the thought it closes, so it can never wrap onto a row alone.
+        if (PUNCT_ONLY.test(piece)) { gluePunct(punctHost(c, host), litNode(piece, ctx)); return; }
+        const lead = piece.match(/^[.,;:?!]+/);
+        if (lead && (c.lastElementChild || host.lastElementChild)) {
+          gluePunct(punctHost(c, host), litNode(lead[0], ctx));
+          piece = piece.slice(lead[0].length);
+          if (piece === "") return;
+        }
+        c.appendChild(litNode(piece, ctx));
+        if (piece.trim() !== "") keep = true;
+      });
       return;
     }
-    if (p.f) { host.appendChild(fillInput(p, line)); return; }
-    if (p.c) { choiceNodes(p, line, ctx, host); return; }
-    if (p.aox) { aoxNodes(p, line, ctx, host); return; }
-    if (p.g) {
-      const g = el("span", "grp");
-      partsNodes(p.g, line, ctx, g);
-      host.appendChild(g);
+    if (p.g) {                                 // an optional whole fragment starts clean
+      close();
+      partNode(p, line, ctx, open());
+      keep = true;
+      close();
       return;
     }
+    partNode(p, line, ctx, open());
+    keep = true;
   });
+  close();
+}
+
+/** Appends punctuation so no row break can separate it from what precedes it: atomic hosts take
+ *  it directly; inline containers get their tail wrapped in a no-break span alongside it. */
+function gluePunct(target, lit) {
+  const cs = target.classList;
+  if (cs && (cs.contains("fld") || cs.contains("clause"))) { target.appendChild(lit); return; }
+  const tail = target.lastElementChild;
+  if (!tail) { target.appendChild(lit); return; }
+  const glue = el("span", "glue");
+  target.replaceChild(glue, tail);
+  glue.appendChild(tail);
+  glue.appendChild(lit);
+}
+
+/** Where a punctuation mark goes: inside the control it closes, or failing that inside the clause
+ *  just emitted. Never a standalone box that a row break could strand. */
+function punctHost(clause, host) {
+  const here = clause.lastElementChild;
+  if (here) return here.tagName === "SPAN" ? here : clause;
+  const prev = host.lastElementChild;                 // the clause closed just before this one
+  if (!prev || !prev.classList.contains("clause")) return clause;
+  const tail = prev.lastElementChild;
+  return tail && tail.tagName === "SPAN" ? tail : prev;
+}
+
+/** Splits a literal at sentence ends. The terminator and the whitespace after it stay with the
+ *  sentence they close, so nothing dangles onto the next row. */
+const SENTENCE_END = /[.?!]\s+/g;
+const PUNCT_ONLY = /^[.,;:?!]+\s*$/;
+function sentencePieces(text) {
+  const out = [];
+  let start = 0, m;
+  SENTENCE_END.lastIndex = 0;
+  while ((m = SENTENCE_END.exec(text)) !== null) {
+    out.push(text.slice(start, SENTENCE_END.lastIndex));
+    start = SENTENCE_END.lastIndex;
+  }
+  out.push(text.slice(start));
+  return out;
 }
 
 function fillInput(p, line) {
@@ -1472,13 +1593,18 @@ function fillInput(p, line) {
   if (isHosp) {
     const listId = "dl_" + p.f;
     input.setAttribute("list", listId);
-    input.style.width = W_MAP[16];
     const dl = document.createElement("datalist");
     dl.id = listId;
     HOSPITALS.forEach(function (h) { dl.appendChild(new Option(h, h)); });
     wrap.appendChild(dl);
+  }
+  const base = isHosp ? W_MAP[16] : (W_MAP[p.w] || W_MAP[8]);
+  if (base === "100%" || hintChars(p.hint) > FULL_HINT_CH) {
+    wrap.classList.add("fld-full");      // takes its clause row rather than overflowing the pane
+    wrap.style.flexBasis = "min(100%, " + hintChars(p.hint) + "ch)";   // a long hint claims a row
+    input.style.width = "100%";
   } else {
-    input.style.width = W_MAP[p.w] || W_MAP[8];
+    input.style.width = fitWidth(base, p.hint);
   }
   if (isTimeField(p)) {
     input.classList.add("time");
@@ -1493,6 +1619,16 @@ function fillInput(p, line) {
   if (input.classList.contains("time")) markTime(input);
   wrap.appendChild(input);
   return wrap;
+}
+
+/** A blank whose hint outruns the widest fixed bucket (18em ≈ 36ch) is really a full-width
+ *  blank — it takes its clause row instead of overflowing the pane. */
+const FULL_HINT_CH = 36;
+function hintChars(hint) { return String(hint || "").length + 2; }
+
+/** No hint is ever clipped: a blank is at least as wide as the placeholder it carries. */
+function fitWidth(base, hint) {
+  return "max(" + base + ", " + hintChars(hint) + "ch)";
 }
 
 /** Soft clock validation — red outline only, never blocks. */
@@ -1564,7 +1700,7 @@ function choiceNodes(p, line, ctx, host) {
     other.dataset.field = p.id + "__other";
     other.dataset.line = line.id;
     other.placeholder = "other…";
-    other.style.width = W_MAP[16];
+    other.style.width = fitWidth(W_MAP[16], other.placeholder);
     const ov = ctx.d.values[p.id + "__other"];
     other.value = nonEmpty(ov) ? String(ov) : "";
     other.addEventListener("input", function () { setValue(p.id + "__other", other.value); });
@@ -1575,7 +1711,7 @@ function choiceNodes(p, line, ctx, host) {
     if (typeof o === "string" || !o.parts) return;
     if (picked.indexOf(o.label) < 0) return;
     const det = el("span", "opt-detail");
-    partsNodes(o.parts, line, ctx, det);
+    partsNodes(o.parts, line, ctx, det, true);
     host.appendChild(det);
   });
 }
