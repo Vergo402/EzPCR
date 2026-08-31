@@ -207,7 +207,7 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 #copy-btn:hover { background: var(--ink-hover); border-color: var(--ink-hover); }
 #copy-btn.confirming { background: var(--sheet); color: var(--red-text); border-color: var(--red-border); }
 #copy-btn.confirming:hover { background: var(--red-bg); }
-#missing-list { border-bottom: 1px solid var(--border); max-height: 20vh; overflow-y: auto; }
+#missing-list { border-bottom: 1px solid var(--border); max-height: 20vh; overflow-y: auto; position: relative; }
 .ml-group { padding-bottom: 4px; }
 .ml-head { font-family: var(--sans); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 500; padding: 8px 14px 2px; position: sticky; top: 0; background: var(--sheet); z-index: 1; }
 .ml-row {
@@ -216,6 +216,9 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
   height: auto; padding: 2px 14px; font-family: var(--serif); font-style: italic; font-size: 12.5px; color: var(--red-text);
 }
 .ml-row:hover { text-decoration: underline; background: var(--red-bg); }
+#missing-list.polishing { opacity: .5; pointer-events: none; }
+.ml-polish-note { font-family: var(--sans); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 500; padding: 8px 14px 2px; }
+.ml-more { position: sticky; bottom: 0; background: var(--sheet); border-top: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--text-faint); padding: 4px 14px; }
 #preview {
   flex: 1; overflow-y: auto; padding: 14px;
   font-family: var(--serif);
@@ -1879,7 +1882,9 @@ function renderPreview() {
   updateCounter(currentText());
   renderMissing(asm.missing);
   document.getElementById("polish-banner").hidden = !d.polish;
-  document.getElementById("polish-toggle").textContent = d.polish ? "Exit polish" : "Polish";
+  const toggleBtn = document.getElementById("polish-toggle");
+  toggleBtn.textContent = d.polish ? "Exit polish" : "Polish";
+  toggleBtn.classList.toggle("on", !!d.polish);
 }
 
 /** @returns {string} what Copy would put on the clipboard right now */
@@ -1906,14 +1911,51 @@ function updateCounter(text) {
   } else w.hidden = true;
 }
 
-function renderMissing(missing) {
+/** A run of 3+ underscores counts as one blank, however long the run. */
+function countBlanks(text) {
+  const m = String(text || "").match(/_{3,}/g);
+  return m ? m.length : 0;
+}
+
+/** Repaint #missing-badge: text-derived while polishing, form-derived otherwise. */
+function paintMissingBadge() {
   const badge = document.getElementById("missing-badge");
+  const d = draft();
+  if (d.polish) {
+    const n = countBlanks(d.polish.text);
+    badge.hidden = n === 0;
+    badge.textContent = n + " ___ in text";
+  } else {
+    const n = (lastAsm && lastAsm.missing.length) || 0;
+    badge.hidden = n === 0;
+    badge.textContent = n + " missing";
+  }
+}
+
+/** Recompute the "+N more below" footer against #missing-list's current scroll position. */
+function updateMissingOverflow() {
   const list = document.getElementById("missing-list");
+  const more = list ? list.querySelector(".ml-more") : null;
+  if (!list || !more) return;
+  const rows = list.querySelectorAll(".ml-row");
+  const limit = list.scrollTop + list.clientHeight;
+  let n = 0;
+  rows.forEach(function (r) { if (r.offsetTop >= limit) n++; });
+  more.hidden = n === 0;
+  more.textContent = "+" + n + " more below";
+}
+
+function renderMissing(missing) {
+  const list = document.getElementById("missing-list");
+  const d = draft();
   const n = missing.length;
-  badge.hidden = n === 0;
-  badge.textContent = n + " missing";
+  paintMissingBadge();
   list.innerHTML = "";
   list.hidden = n === 0;
+  list.classList.toggle("polishing", !!d.polish);
+  if (d.polish && n !== 0) {
+    list.appendChild(el("div", "ml-polish-note", "Form fields still empty — not in the copied text"));
+  }
   const groups = [];
   missing.forEach(function (m) {
     let g = groups.find(function (x) { return x.id === m.sectionId; });
@@ -1932,6 +1974,8 @@ function renderMissing(missing) {
     });
     list.appendChild(box);
   });
+  list.appendChild(el("div", "ml-more"));
+  requestAnimationFrame(function () { updateMissingOverflow(); });
   disarmCopy();
 }
 
@@ -1939,10 +1983,10 @@ function renderMissing(missing) {
 function paintCopyLabel() {
   const copy = document.getElementById("copy-btn");
   const d = draft();
-  const n = (lastAsm && lastAsm.missing.length) || 0;
+  const n = d.polish ? countBlanks(d.polish.text) : ((lastAsm && lastAsm.missing.length) || 0);
   let label = "Copy";
   if (state.drafts.length >= 2) label += " — " + d.label;
-  if (n > 0 && !d.polish) label += " (" + n + " ___)";
+  if (n > 0) label += " (" + n + " ___)";
   copy.textContent = label;
 }
 
@@ -2452,9 +2496,11 @@ function wire() {
     d.polish.text = pv.innerText;
     d.polish.dirty = true;
     updateCounter(d.polish.text);
+    paintMissingBadge();
     disarmCopy();
     scheduleSave();
   });
+  document.getElementById("missing-list").addEventListener("scroll", updateMissingOverflow);
 }
 
 /* ============================ boot ============================ */
