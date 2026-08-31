@@ -110,7 +110,7 @@ button:active { background: var(--tint); }
 .card-body { display: flex; flex-direction: column; gap: 8px; }
 .lines { display: flex; flex-direction: column; gap: 9px; }
 .card-intro, .card-note { font-size: 11px; color: var(--text-faint); line-height: 1.5; }
-.section-card.na .lines, .section-card.na .expander { opacity: .35; }
+.section-card.na .lines, .section-card.na .expander { opacity: .55; }
 .rm-block { width: 24px; height: 24px; padding: 0; line-height: 1; border-radius: 50%; color: var(--text-dim); font-size: 14px; }
 .rm-block:hover { background: var(--red-bg); border-color: var(--red-border); color: var(--red-text); }
 .na-toggle { height: 22px; padding: 0 10px; font-size: 11px; border-radius: 999px; color: var(--text-dim); background: transparent; border: 1px solid var(--border-strong); }
@@ -195,6 +195,7 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 
 /* ---- preview ---- */
 #preview-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+#draft-chip { font-size: 11px; padding: 2px 9px; border-radius: 999px; background: var(--gray-bg); color: var(--text); font-weight: 500; }
 #char-counter { font-family: var(--mono); font-size: 11.5px; color: var(--text-dim); font-variant-numeric: tabular-nums; margin-right: auto; }
 #char-counter.amber { color: var(--amber-text); font-weight: 500; }
 #char-counter.red { color: var(--red-text); font-weight: 500; }
@@ -202,7 +203,7 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 #missing-badge { font-size: 11px; font-weight: 500; color: var(--red-text); background: var(--red-bg); border-radius: 4px; padding: 2px 9px; }
 #polish-banner { font-size: 12px; color: var(--amber-text); background: var(--amber-bg); padding: 7px 14px; border-bottom: 1px solid var(--border); }
 #polish-toggle.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-#copy-btn { background: var(--ink); border-color: var(--ink); color: var(--paper); font-weight: 500; }
+#copy-btn { background: var(--ink); border-color: var(--ink); color: var(--paper); font-weight: 500; min-width: 150px; }
 #copy-btn:hover { background: var(--ink-hover); border-color: var(--ink-hover); }
 #copy-btn.confirming { background: var(--sheet); color: var(--red-text); border-color: var(--red-border); }
 #copy-btn.confirming:hover { background: var(--red-bg); }
@@ -287,7 +288,8 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 
   <section id="preview-pane">
     <div id="preview-head">
-      <span id="char-counter">0</span>
+      <span id="draft-chip" hidden></span>
+      <span id="char-counter" title="emsCharts HPI cap: 4,000 characters">0</span>
       <span id="missing-badge" hidden>0 missing</span>
       <button id="polish-toggle" type="button">Polish</button>
       <button id="copy-btn" type="button">Copy</button>
@@ -642,8 +644,7 @@ const COND_IDS = {
   molstTemplates: ["cardiacArrest"],
   loiBlocks: ["cardiac", "abdominal", "metabolic"]
 };
-const CHAR_AMBER = 3500, CHAR_RED = 4000;
-const CHAR_RED_MSG = "emsCharts HPI cap 4,000 — will truncate silently.";
+const CHAR_AMBER = 3200, CHAR_RED = 4000;
 
 /* ============================ small utilities ============================ */
 
@@ -1212,6 +1213,11 @@ function renderTopbar() {
     });
     sw.appendChild(b);
   });
+
+  const chip = document.getElementById("draft-chip");
+  chip.hidden = state.drafts.length < 2;
+  chip.textContent = d.label;
+  paintCopyLabel();
 }
 
 function renderForm() {
@@ -1290,7 +1296,11 @@ function shellCard(s, ctx) {
       structuralEdit();
     });
     card._tools.appendChild(btn);
-    if (d.naSections[s.id]) card.classList.add("na");
+    if (d.naSections[s.id]) {
+      card.classList.add("na");
+      card._lines.inert = true;
+      card._expWrap.inert = true;
+    }
   }
   sectionNote(card, s);
   fillCardLines(card, s.lines, ctx);
@@ -1881,13 +1891,19 @@ function currentText() {
 
 function updateCounter(text) {
   const n = charCount(text);
+  const over = n - CHAR_RED;
   const c = document.getElementById("char-counter");
   const w = document.getElementById("char-warning");
-  c.textContent = String(n);
-  c.classList.toggle("amber", n >= CHAR_AMBER && n < CHAR_RED);
-  c.classList.toggle("red", n >= CHAR_RED);
-  if (n >= CHAR_RED) { w.hidden = false; w.textContent = CHAR_RED_MSG; }
-  else w.hidden = true;
+  let label = n.toLocaleString("en-US") + " / " + CHAR_RED.toLocaleString("en-US");
+  if (over > 0) label += " · " + over.toLocaleString("en-US") + " over";
+  else if (n >= CHAR_AMBER) label += " · " + (CHAR_RED - n).toLocaleString("en-US") + " left";
+  c.textContent = label;
+  c.classList.toggle("amber", n >= CHAR_AMBER && over <= 0);
+  c.classList.toggle("red", over > 0);
+  if (over > 0) {
+    w.hidden = false;
+    w.textContent = "emsCharts HPI cap 4,000 — paste will truncate silently. Trim " + over.toLocaleString("en-US") + " characters.";
+  } else w.hidden = true;
 }
 
 function renderMissing(missing) {
@@ -1916,9 +1932,25 @@ function renderMissing(missing) {
     });
     list.appendChild(box);
   });
+  disarmCopy();
+}
+
+/** Copy button resting label: base "Copy", draft suffix (2+ drafts), missing-count suffix. */
+function paintCopyLabel() {
   const copy = document.getElementById("copy-btn");
-  copy.textContent = n > 0 ? "Copy (" + n + " ___)" : "Copy";
+  const d = draft();
+  const n = (lastAsm && lastAsm.missing.length) || 0;
+  let label = "Copy";
+  if (state.drafts.length >= 2) label += " — " + d.label;
+  if (n > 0 && !d.polish) label += " (" + n + " ___)";
+  copy.textContent = label;
+}
+
+/** Any edit invalidates an armed copy-confirm: disarm and repaint the resting label. */
+function disarmCopy() {
   ui.copyPending = false;
+  document.getElementById("copy-btn").classList.remove("confirming");
+  paintCopyLabel();
 }
 
 /* ---- click-to-jump (both directions) ---- */
@@ -2128,7 +2160,23 @@ function startHandoff(owner) {
 
 function togglePolish() {
   const d = draft();
-  if (d.polish) { d.polish = null; ui.polishWarned = false; renderAll(); return; }
+  if (d.polish) {
+    if (d.polish.dirty) {
+      openModal({
+        title: "Discard polish edits?",
+        body: "Hand-edited text will be replaced by the form narrative. This can't be undone.",
+        actions: [
+          { label: "Keep editing", cls: "quiet" },
+          { label: "Discard edits", cls: "danger", onClick: function () {
+              const d = draft();
+              d.polish = null; ui.polishWarned = false; renderAll();
+            } }
+        ]
+      });
+      return;
+    }
+    d.polish = null; ui.polishWarned = false; renderAll(); return;
+  }
   const text = assemblyText(lastAsm || assemble(context()));
   d.polish = { text: text, dirty: false };
   const pv = document.getElementById("preview");
@@ -2165,16 +2213,21 @@ function warnPolish() {
 function doCopy() {
   const btn = document.getElementById("copy-btn");
   const missingN = (lastAsm && lastAsm.missing.length) || 0;
-  if (missingN > 0 && !ui.copyPending && !draft().polish) {
+  const missingActive = missingN > 0 && !draft().polish;
+  const over = charCount(currentText()) - CHAR_RED;
+  const overActive = over > 0;
+  if ((missingActive || overActive) && !ui.copyPending) {
     ui.copyPending = true;
-    btn.textContent = "Copy with " + missingN + " unfilled ___?";
+    let label;
+    if (missingActive && overActive) {
+      label = missingN + " ___, " + over.toLocaleString("en-US") + " over cap — copy anyway?";
+    } else if (overActive) {
+      label = over.toLocaleString("en-US") + " over cap — copy anyway?";
+    } else {
+      label = "Copy with " + missingN + " unfilled ___?";
+    }
+    btn.textContent = label;
     btn.classList.add("confirming");
-    setTimeout(function () {
-      if (!ui.copyPending) return;
-      ui.copyPending = false;
-      btn.classList.remove("confirming");
-      btn.textContent = "Copy (" + missingN + " ___)";
-    }, 6000);
     return;
   }
   ui.copyPending = false;
@@ -2399,6 +2452,7 @@ function wire() {
     d.polish.text = pv.innerText;
     d.polish.dirty = true;
     updateCounter(d.polish.text);
+    disarmCopy();
     scheduleSave();
   });
 }
