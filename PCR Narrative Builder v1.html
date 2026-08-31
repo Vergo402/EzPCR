@@ -21,8 +21,8 @@ body {
 :root {
   --paper: #F7F4ED; --sheet: #FCFAF4;
   --ink: #23201A; --ink-hover: #3A362E;
-  --text: #23201A; --text-dim: #7A7263; --text-faint: #8C8474; --text-label: #7A7263; --text-2: #4A463D;
-  --border: #DFD8C9; --border-strong: #CCC3B0; --input-rule: #B7AD97; --placeholder: #A39A87;
+  --text: #23201A; --text-dim: #5F594C; --text-faint: #5F594C; --text-label: #5F594C; --text-2: #4A463D;
+  --border: #DFD8C9; --border-strong: #CCC3B0; --input-rule: #9A8F78; --placeholder: #756D5D;
   --green-bg: #E7EDE4; --green-text: #3E6B4F; --green-border: #BFD3C5;
   --amber-bg: #F3ECD9; --amber-text: #8A6D2F;
   --gray-bg: #EFEBE1; --gray-text: #6B655B;
@@ -53,7 +53,7 @@ select {
 }
 input[type="text"] {
   font: inherit; font-size: 13px; color: var(--text); background: transparent;
-  border: none; border-bottom: 1px solid var(--input-rule); border-radius: 0;
+  border: none; border-bottom: 1.5px solid var(--input-rule); border-radius: 0;
   height: 30px; padding: 0 8px;
 }
 input[type="text"]::placeholder { font-style: italic; color: var(--placeholder); }
@@ -170,11 +170,11 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 .seg-btn + .seg-btn { border-left: 1px solid var(--border); }
 .seg-btn:hover { background: var(--paper); }
 .seg-btn.on { font-weight: 500; }
-.seg-btn.on.seg-given { background: var(--green-bg); color: var(--green-text); }
-.seg-btn.on.seg-withheld { background: var(--amber-bg); color: var(--amber-text); }
-.seg-btn.on.seg-omit { background: var(--gray-bg); color: var(--gray-text); }
-.seg-btn.on.seg-fired { background: var(--red-bg); color: var(--red-text); font-weight: 500; }
-.seg-btn.on.seg-normal { background: var(--gray-bg); color: var(--gray-text); }
+.seg-btn.on.seg-given { background: #DCE6D8; color: var(--green-text); box-shadow: inset 0 0 0 1.5px var(--green-border); }
+.seg-btn.on.seg-withheld { background: #EFE3C4; color: var(--amber-text); box-shadow: inset 0 0 0 1.5px #D8C48E; }
+.seg-btn.on.seg-omit { background: #E6E1D3; color: #57503F; box-shadow: inset 0 0 0 1.5px #A89D86; }
+.seg-btn.on.seg-fired { background: var(--red-bg); color: var(--red-text); font-weight: 500; box-shadow: inset 0 0 0 1.5px var(--red-border); }
+.seg-btn.on.seg-normal { background: #E6E1D3; color: #57503F; box-shadow: inset 0 0 0 1.5px #A89D86; }
 .pills, .chips { display: inline; }
 .pill, .chip { height: 25px; padding: 0 11px; font-size: 12px; border-radius: 999px; vertical-align: baseline; }
 .pills .pill, .chips .chip { margin: 0 2px 0 0; }   /* inline runs wrap between pills, not as a block */
@@ -207,13 +207,13 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 #copy-btn:hover { background: var(--ink-hover); border-color: var(--ink-hover); }
 #copy-btn.confirming { background: var(--sheet); color: var(--red-text); border-color: var(--red-border); }
 #copy-btn.confirming:hover { background: var(--red-bg); }
-#missing-list { border-bottom: 1px solid var(--border); max-height: 30vh; overflow-y: auto; }
+#missing-list { border-bottom: 1px solid var(--border); max-height: 20vh; overflow-y: auto; }
 .ml-group { padding-bottom: 4px; }
-.ml-head { font-family: var(--sans); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 500; padding: 8px 14px 2px; }
+.ml-head { font-family: var(--sans); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 500; padding: 8px 14px 2px; position: sticky; top: 0; background: var(--sheet); z-index: 1; }
 .ml-row {
   display: block; width: 100%; text-align: left; background: transparent;
   border: none; border-bottom: 1px solid var(--border); border-radius: 0;
-  height: auto; padding: 5px 14px; font-family: var(--serif); font-style: italic; font-size: 12.5px; color: var(--red-text);
+  height: auto; padding: 2px 14px; font-family: var(--serif); font-style: italic; font-size: 12.5px; color: var(--red-text);
 }
 .ml-row:hover { text-decoration: underline; background: var(--red-bg); }
 #preview {
