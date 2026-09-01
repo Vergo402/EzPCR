@@ -2430,8 +2430,16 @@ function openModal(cfg) {
 /* ============================ persistence (sessionStorage ONLY) ============================ */
 
 let saveTimer = null;
+let ssOK = true;
+function probeStorage() {
+  try {
+    sessionStorage.setItem(SS_KEY + "__probe", "1");
+    sessionStorage.removeItem(SS_KEY + "__probe");
+    return true;
+  } catch (e) { return false; }
+}
 function scheduleSave() {
-  setStatus("editing…");
+  if (ssOK) setStatus("editing…");
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(saveNow, 500);
 }
@@ -2606,6 +2614,7 @@ function wire() {
 
 function boot() {
   buildIndexes();
+  ssOK = probeStorage();
   restore();
   wire();
   const d = draft();
@@ -2615,7 +2624,12 @@ function boot() {
     pv.textContent = d.polish.text;
   }
   renderAll();
-  setStatus("ready");
+  if (ssOK) {
+    setStatus("ready");
+  } else {
+    setStatus("autosave unavailable");
+    document.getElementById("save-state").title = "Browser is blocking site data for this page — drafts will not survive a reload.";
+  }
 }
 document.addEventListener("DOMContentLoaded", boot);
 </script>
