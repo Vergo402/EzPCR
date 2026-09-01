@@ -109,7 +109,7 @@ button:active { background: var(--tint); }
 .section-card { background: transparent; border: none; border-radius: var(--radius); padding: 12px 14px; }
 #disposition-card { background: var(--sheet); border: 1px solid var(--border); border-radius: 8px; }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-.card-title { font-family: var(--sans); font-size: 12.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .11em; color: var(--text-2); }
+.card-title { font-family: var(--sans); font-size: 12.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .11em; color: var(--text-2); margin: 0; }
 .card-tools { display: flex; gap: 6px; align-items: center; }
 .card-body { display: flex; flex-direction: column; gap: 8px; }
 .lines { display: flex; flex-direction: column; gap: 9px; }
@@ -1271,7 +1271,7 @@ function cardShell(id, name) {
   const card = el("div", "section-card");
   card.dataset.section = id;
   const head = el("div", "card-head");
-  head.appendChild(el("span", "card-title", name));
+  head.appendChild(el("h2", "card-title", name));
   const tools = el("span", "card-tools");
   head.appendChild(tools);
   const body = el("div", "card-body");
@@ -1420,10 +1420,17 @@ function lineNode(line, ctx) {
   } else if (line.kind === "fork") {
     const sel = forkSel(line.id);
     const row = el("div", "fork-row");
+    if (!line.multi) { row.setAttribute("role", "radiogroup"); }
     (line.options || []).forEach(function (o) {
       const on = sel.indexOf(o.label) >= 0;
       const b = el("button", "pill" + (on ? " on" : ""), o.label);
       b.type = "button";
+      if (line.multi) {
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+      } else {
+        b.setAttribute("role", "radio");
+        b.setAttribute("aria-checked", on ? "true" : "false");
+      }
       b.addEventListener("click", function () {
         if (line.multi) {
           const next = sel.slice();
@@ -1503,9 +1510,12 @@ function cssEsc(s) { return String(s).replace(/["\\]/g, "\\$&"); }
 
 function segmented(opts, current, cls, onPick) {
   const wrap = el("div", "seg seg-" + cls);
+  wrap.setAttribute("role", "radiogroup");
   opts.forEach(function (o) {
     const b = el("button", "seg-btn" + (o.v === current ? " on seg-" + o.v : ""), o.t);
     b.type = "button";
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-checked", o.v === current ? "true" : "false");
     b.addEventListener("click", function () { onPick(o.v); });
     wrap.appendChild(b);
   });
@@ -1720,6 +1730,7 @@ function choiceNodes(p, line, ctx, host) {
       const on = picked.indexOf(o) >= 0;
       const b = el("button", "chip" + (on ? " on" : ""), labelOf(o));
       b.type = "button";
+      b.setAttribute("aria-pressed", on ? "true" : "false");
       b.dataset.field = p.id; b.dataset.line = line.id;
       b.addEventListener("click", function () {
         const next = picked.slice();
@@ -1741,10 +1752,13 @@ function choiceNodes(p, line, ctx, host) {
     host.appendChild(s);
   } else {
     const row = el("span", "pills");
+    row.setAttribute("role", "radiogroup");
     opts.forEach(function (o) {
       const on = picked.indexOf(o) >= 0;
       const b = el("button", "pill" + (on ? " on" : ""), labelOf(o));
       b.type = "button";
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", on ? "true" : "false");
       b.dataset.field = p.id; b.dataset.line = line.id;
       b.addEventListener("click", function () {
         setValue(p.id, picked.indexOf(o) >= 0 ? "" : o);
@@ -1788,6 +1802,7 @@ function aoxNodes(p, line, ctx, host) {
     const on = keys.indexOf(x.k) >= 0;
     const b = el("button", "pill" + (on ? " on" : ""), x.t);
     b.type = "button";
+    b.setAttribute("aria-pressed", on ? "true" : "false");
     b.dataset.field = p.aox; b.dataset.line = line.id;
     b.addEventListener("click", function () {
       const next = AOX.filter(function (y) {
@@ -1816,14 +1831,17 @@ function renderDisposition(ctx) {
   if (ctx.doaActive) return;
   card.dataset.section = "disposition";
   const head = el("div", "card-head");
-  head.appendChild(el("span", "card-title", "Disposition"));
+  head.appendChild(el("h2", "card-title", "Disposition"));
   card.appendChild(head);
   const body = el("div", "card-body");
   const row = el("div", "disp-row");
+  row.setAttribute("role", "radiogroup");
   (DOC.dispositions || []).forEach(function (dsp) {
     const on = ctx.d.disposition === dsp.id;
     const b = el("button", "disp-pill" + (on ? " on" : ""), dsp.name);
     b.type = "button";
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-checked", on ? "true" : "false");
     b.addEventListener("click", function () {
       ctx.d.disposition = on ? null : dsp.id;
       structuralEdit();
@@ -2184,9 +2202,12 @@ function askEscalate(line) {
   body.appendChild(el("p", null, "Add " + choice.label + " after this block? Entered values carry over."));
   if (targets.length > 1) {
     const row = el("div", "modal-pills");
+    row.setAttribute("role", "radiogroup");
     const btns = targets.map(function (t) {
       const b = el("button", "pill" + (t === choice ? " on" : ""), t.label);
       b.type = "button";
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", t === choice ? "true" : "false");
       b.addEventListener("click", function () {
         choice = t;
         Array.prototype.forEach.call(row.children, function (c, i) {
