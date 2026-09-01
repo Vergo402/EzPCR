@@ -35,7 +35,7 @@ body {
   --radius: 8px; --radius-sm: 6px; --focus-ring: #23201A;
 }
 :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.seg-btn:focus-visible, .ml-row:focus-visible { outline-offset: -2px; }
+.ws-field:focus-visible { outline-offset: -1px; }
 
 /* ---- topbar ---- */
 #topbar {
@@ -94,27 +94,97 @@ button:active { background: var(--tint); }
 .draft-tab:hover { background: rgba(35,32,26,.05); }
 .draft-tab.active { background: var(--sheet); color: var(--text); font-weight: 500; box-shadow: 0 1px 2px rgba(60,50,30,.1); }
 
-/* ---- panes ---- */
-#panes { display: flex; align-items: flex-start; gap: 16px; padding: 16px; max-width: 1600px; margin: 0 auto; }
-#form-pane { flex: 0 0 55%; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-#shell-top, #shell-bottom, #block-slot { display: flex; flex-direction: column; gap: 12px; }
+/* ---- panes: worksheet | prose ---- */
+#panes {
+  display: grid; grid-template-columns: minmax(0, 1.06fr) minmax(0, 1fr);
+  align-items: start; gap: 16px; padding: 16px; max-width: 1600px; margin: 0 auto;
+}
+#form-pane { min-width: 0; }
 #preview-pane {
-  flex: 1 1 45%; min-width: 0; position: sticky; top: 66px; align-self: flex-start;
+  min-width: 0; position: sticky; top: 66px; align-self: start;
   max-height: calc(100vh - 84px); display: flex; flex-direction: column;
   background: var(--sheet); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
 }
 #statusbar { font-family: var(--mono); font-size: 11px; color: var(--text-dim); padding: 6px 16px; border-top: 1px solid var(--border); background: var(--paper); position: sticky; bottom: 0; z-index: 30; }
 
-/* ---- cards ---- */
-.section-card { background: transparent; border: none; border-radius: var(--radius); padding: 12px 14px; }
-#disposition-card { background: var(--sheet); border: 1px solid var(--border); border-radius: 8px; }
-.card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-.card-title { font-family: var(--sans); font-size: 12.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .11em; color: var(--text-2); margin: 0; }
-.card-tools { display: flex; gap: 6px; align-items: center; }
-.card-body { display: flex; flex-direction: column; gap: 8px; }
-.lines { display: flex; flex-direction: column; gap: 9px; }
-.card-intro, .card-note { font-size: 11px; color: var(--text-faint); line-height: 1.5; }
-.section-card.na .lines, .section-card.na .expander { opacity: .55; }
+/* ---- worksheet ---- */
+#worksheet { display: flex; flex-direction: column; gap: 20px; }
+.ws-sec { display: flex; flex-direction: column; }
+.ws-sechead {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 3px;
+}
+.ws-secname { font-family: var(--sans); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .11em; color: var(--text-faint); margin: 0; }
+.ws-sectools { display: flex; gap: 6px; align-items: center; }
+.ws-rows { display: flex; flex-direction: column; }
+.ws-sec.ws-na .ws-rows { opacity: .55; }
+.ws-note { font-size: 11px; color: var(--text-faint); line-height: 1.5; padding: 5px 8px; }
+.ws-subhead { font-size: 11px; font-weight: 500; color: var(--text-faint); padding: 9px 8px 3px; }
+.ws-sub { display: flex; flex-direction: column; margin-left: 14px; padding-left: 10px; border-left: 2px solid var(--border); }
+.ws-sec .sub-row { padding: 6px 8px 4px; }
+.ws-sec .handoff-btn { margin: 8px 8px 0; }
+.ws-sec .pt-contact { padding: 6px 8px; }
+
+/* padding and alignment are the same in both states: moving the cursor must not
+   shift the rows around it — only the box changes. */
+.ws-row {
+  display: grid; grid-template-columns: 10.5em minmax(0, 1fr); gap: 3px 10px;
+  align-items: baseline; padding: 5px 8px; font-size: 13px;
+  border: 1px solid transparent; border-radius: var(--radius-sm); scroll-margin-top: 78px;
+}
+.ws-row:hover { background: var(--tint); }
+.ws-row.ws-focused {
+  background: var(--sheet); border-color: var(--ink); box-shadow: 0 1px 3px rgba(60,50,30,.10);
+}
+/* wraps at spaces, hyphens, and the zero-width breaks wrapLabel puts after each "/" —
+   never mid-word (break-word is only a last resort for a token wider than the column) */
+.ws-label { font-size: 11.5px; color: var(--text-2); letter-spacing: .03em; overflow-wrap: break-word; word-break: normal; }
+.ws-fields { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; min-width: 0; }
+.ws-row.ws-focused .ws-fields { align-items: center; gap: 6px; }
+.ws-sep { color: var(--border-strong); }
+.ws-none { color: var(--text-faint); }
+.ws-rownote { grid-column: 2; font-size: 11px; color: var(--text-faint); display: none; }
+.ws-row.ws-focused .ws-rownote { display: block; }
+.ws-deferred .ws-label { color: var(--text-faint); }
+
+/* field states: confirmed / proposed / amber */
+.ws-field { display: inline-flex; align-items: baseline; gap: 4px; max-width: 100%; border-radius: 3px; }
+.ws-flabel { font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+.ws-fval { overflow-wrap: anywhere; }
+.ws-check { font-size: 10px; color: var(--green-text); }
+.ws-set .ws-fval { color: var(--ink); }
+.ws-idle .ws-fval { color: var(--text-faint); }
+/* a settled structural decision keeps its clinical colour */
+.ws-field .ws-fval.tone-fired { color: var(--red-text); font-weight: 500; }
+.ws-field .ws-fval.tone-given { color: var(--green-text); }
+.ws-field .ws-fval.tone-withheld { color: var(--amber-text); }
+.ws-proposed .ws-fval { color: var(--text-dim); font-style: italic; }
+.ws-amber .ws-fval {
+  color: var(--amber-text); font-style: italic;
+  border-bottom: 1px dotted var(--amber-text); padding-bottom: 1px;
+}
+.ws-open .ws-fval { color: var(--green-text); }
+
+/* the cursor's field: its real control, in an accent box */
+.ws-field.ws-editing { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ws-ctl { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; max-width: 100%; }
+.ws-opts { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.ws-ctl input[type="text"] { height: 26px; font-size: 13px; }
+/* a blank whose placeholder IS the proposal Enter would accept — dashed rule, matching
+   the dashed proposal pills, so it never reads as an ordinary "type something" hint */
+.ws-ctl input.proposal { border-bottom-style: dashed; }
+.ws-ctl input.proposal::placeholder { font-style: italic; color: var(--text-dim); opacity: 1; }
+.ws-keyhint { font-family: var(--mono); font-size: 10px; color: var(--text-faint); white-space: nowrap; }
+.ws-inline-note { font-size: 11px; color: var(--text-faint); font-style: italic; }
+.ws-openbtn { height: 24px; padding: 0 10px; font-size: 12px; color: var(--green-text); background: transparent; border: 1px dashed var(--border-strong); }
+.ws-openbtn:hover { background: var(--green-bg); border-color: var(--green-border); }
+.pill.hl, .chip.hl { box-shadow: 0 0 0 1.5px var(--ink) inset; }
+.pill.prop, .chip.prop { border-style: dashed; color: var(--text-dim); font-style: italic; }
+/* the structural decisions carry the same colours the old segmented control did */
+.ws-opts button[data-opt="fired"].on { background: var(--red-bg); color: var(--red-text); border-color: var(--red-border); }
+.ws-opts button[data-opt="given"].on { background: #DCE6D8; color: var(--green-text); border-color: var(--green-border); }
+.ws-opts button[data-opt="withheld"].on { background: #EFE3C4; color: var(--amber-text); border-color: #D8C48E; }
+.ws-opts button[data-opt="omit"].on, .ws-opts button[data-opt="normal"].on { background: #E6E1D3; color: #57503F; border-color: #A89D86; }
 .rm-block { width: 24px; height: 24px; padding: 0; line-height: 1; border-radius: 50%; color: var(--text-dim); font-size: 14px; }
 .rm-block:hover { background: var(--red-bg); border-color: var(--red-border); color: var(--red-text); }
 .na-toggle { height: 22px; padding: 0 10px; font-size: 11px; border-radius: 999px; color: var(--text-dim); background: transparent; border: 1px solid var(--border-strong); }
@@ -123,78 +193,16 @@ button:active { background: var(--tint); }
 .sub-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 2px; }
 .sub-pill { height: 26px; padding: 0 12px; font-size: 12px; border-radius: 999px; }
 .sub-pill.on { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 500; }
-.sub-group { display: flex; flex-direction: column; gap: 9px; padding: 8px 0 2px; }
-.sub-head { font-size: 11px; font-weight: 500; color: var(--text-faint); text-transform: none; }
 .handoff-btn { align-self: flex-start; border-color: var(--green-border); color: var(--green-text); background: var(--green-bg); }
 .handoff-btn:hover { background: #D9E3D7; }
-
-/* expander */
-.expander { display: flex; flex-direction: column; gap: 6px; }
-.expander-toggle {
-  align-self: flex-start; font-size: 12px; color: var(--green-text);
-  background: transparent; border: none; height: auto; padding: 2px 0;
-}
-.expander-toggle:hover { text-decoration: underline; background: transparent; }
-.expander-body {
-  display: flex; flex-direction: column; gap: 9px; padding: 10px;
-  background: var(--tint); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
-}
-
-/* ---- lines ---- */
-.line { display: flex; flex-direction: column; gap: 4px; border-radius: 6px; scroll-margin-top: 70px; }
-.line.target { box-shadow: inset 3px 0 0 var(--red-text); background: var(--red-bg); }
-.line-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.line-label { font-size: 11.5px; color: var(--text-2); letter-spacing: .03em; }
-.line-hint { font-size: 11px; color: var(--text-faint); font-style: italic; }
-.line-note { font-size: 11px; color: var(--text-faint); }
-/* Sentence flow: the row is a paragraph, each .clause one thought that never splits mid-thought. */
-.line-inputs { display: block; line-height: 2.2; margin-left: 2px; }
-.clause { display: inline-block; max-width: 100%; vertical-align: top; margin-right: .45em; margin-bottom: 6px; line-height: 2.2; }
-.clause.clause-fill { display: flex; flex-wrap: wrap; align-items: baseline; width: 100%; column-gap: 0; margin-right: 0; }
-.clause-fill .lit { white-space: pre-wrap; }   /* as flex items literals must keep their own spaces */
-.glue { white-space: nowrap; }   /* a pill or blank and the punctuation that closes it never separate */
-.lit { display: inline; font-size: 13px; color: var(--text-dim); }
-.fld { display: inline-flex; align-items: baseline; vertical-align: baseline; }
-.fld-full { flex: 1 1 12em; min-width: 12em; }
-.clause-fill .fill-host { display: flex; flex-wrap: wrap; align-items: baseline; flex: 1 1 100%; min-width: 0; }
-.grp { display: inline; }
-.opt-detail { display: inline; }
-.line-inputs select { vertical-align: baseline; }
-.fork-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.fork-lines { display: flex; flex-direction: column; gap: 9px; margin-left: 14px; padding-left: 10px; border-left: 2px solid var(--border); }
-.line-inputs input[type="text"] { height: 28px; font-size: 13px; }
 input.time { font-variant-numeric: tabular-nums; }
 input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var(--red-text) inset; }
-.other-input { margin-left: 2px; }
 
-/* ---- segmented + pills + chips ---- */
-.seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 999px; overflow: hidden; background: var(--sheet); }
-.seg-btn { border: none; border-radius: 0; background: transparent; height: 24px; padding: 0 11px; font-size: 12px; color: var(--text-dim); white-space: nowrap; }
-.seg-btn + .seg-btn { border-left: 1px solid var(--border); }
-.seg-btn:hover { background: var(--paper); }
-.seg-btn.on { font-weight: 500; }
-.seg-btn.on.seg-given { background: #DCE6D8; color: var(--green-text); box-shadow: inset 0 0 0 1.5px var(--green-border); }
-.seg-btn.on.seg-withheld { background: #EFE3C4; color: var(--amber-text); box-shadow: inset 0 0 0 1.5px #D8C48E; }
-.seg-btn.on.seg-omit { background: #E6E1D3; color: #57503F; box-shadow: inset 0 0 0 1.5px #A89D86; }
-.seg-btn.on.seg-fired { background: var(--red-bg); color: var(--red-text); font-weight: 500; box-shadow: inset 0 0 0 1.5px var(--red-border); }
-.seg-btn.on.seg-normal { background: #E6E1D3; color: #57503F; box-shadow: inset 0 0 0 1.5px #A89D86; }
-.pills, .chips { display: inline; }
+/* ---- pills + chips (worksheet controls and the escalation modal) ---- */
 .pill, .chip { height: 25px; padding: 0 11px; font-size: 12px; border-radius: 999px; vertical-align: baseline; }
-.pills .pill, .chips .chip { margin: 0 2px 0 0; }   /* inline runs wrap between pills, not as a block */
-.pills .pill:last-child, .chips .chip:last-child { margin-right: 0; }   /* punctuation hugs the run */
 .pill.on, .chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 500; }
 .modal-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
-/* orientation: derived count + its component pills */
-.aox { display: inline; }
-.aox > * { margin-right: 5px; }
-.aox > *:last-child { margin-right: 0; }
-.aox-count { display: inline-block; vertical-align: baseline; min-width: 1.3em; text-align: center; border-bottom: 1px solid var(--ink); font-weight: 500; padding: 1px 4px; }
 .pill.aox-all { border: 1px dotted var(--green-text); color: var(--green-text); background: transparent; }
-
-/* ---- disposition ---- */
-.disp-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
-.disp-pill { height: 28px; padding: 0 14px; font-size: 12px; border-radius: 999px; }
-.disp-pill.on { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 500; }
 
 /* ---- preview ---- */
 #preview-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
@@ -210,21 +218,6 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 #copy-btn:hover { background: var(--ink-hover); border-color: var(--ink-hover); }
 #copy-btn.confirming { background: var(--sheet); color: var(--red-text); border-color: var(--red-border); }
 #copy-btn.confirming:hover { background: var(--red-bg); }
-#missing-list { border-bottom: 1px solid var(--border); max-height: 20vh; overflow-y: auto; position: relative; }
-.ml-group { padding-bottom: 4px; display: grid; grid-template-columns: max-content 1fr; }
-.ml-head { font-family: var(--sans); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 500; padding: 8px 14px 2px; position: sticky; top: 0; background: var(--sheet); z-index: 1; grid-column: 1 / -1; }
-.ml-row {
-  display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; column-gap: 6px;
-  width: 100%; text-align: left; background: transparent;
-  border: none; border-bottom: 1px solid var(--border); border-radius: 0;
-  height: auto; padding: 2px 14px; font-family: var(--serif); font-style: italic; font-size: 12.5px; color: var(--red-text);
-}
-.ml-row:hover { text-decoration: underline; background: var(--red-bg); }
-.ml-row .ml-line { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
-.ml-row .ml-field { min-width: 0; }
-#missing-list.polishing { opacity: .5; pointer-events: none; }
-.ml-polish-note { font-family: var(--sans); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 500; padding: 8px 14px 2px; }
-.ml-more { position: sticky; bottom: 0; background: var(--sheet); border-top: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--text-faint); padding: 4px 14px; }
 #preview {
   flex: 1; overflow-y: auto; padding: 14px; max-width: 70ch;
   font-family: var(--serif);
@@ -236,6 +229,11 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 .pv-line:hover { background: var(--tint); }
 .pv-blank { background: var(--red-bg); color: var(--red-text); border-bottom: 1.5px solid var(--red-text); border-radius: 2px 2px 0 0; padding: 0 6px; font-weight: 500; }
 .pv-blank:hover { background: var(--red-bg); border-radius: 3px; cursor: pointer; }
+/* a default the medic has not stood behind yet: present, but plainly not attested */
+.pv-proposed { color: var(--text-faint); font-style: italic; }
+.pv-proposed[data-field] { border-bottom: 1px dotted var(--border-strong); cursor: pointer; }
+.pv-proposed[data-field]:hover { background: var(--tint); }
+.pv-focus { background: #EAE3D0; box-shadow: inset 0 -2px 0 var(--ink); border-radius: 2px; }
 .pv-withheld { background: var(--amber-bg); border-radius: 2px; }
 
 /* ---- modal ---- */
@@ -255,10 +253,11 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 
 /* ---- responsive ---- */
 @media (max-width: 1099px) {
-  #panes { flex-direction: column; }
-  #form-pane, #preview-pane { flex: 1 1 auto; width: 100%; }
+  #panes { grid-template-columns: minmax(0, 1fr); }
   #preview-pane { position: static; max-height: none; }
   .topbar-controls { margin-left: 0; width: 100%; }
+  .ws-row { grid-template-columns: minmax(0, 1fr); }
+  .ws-rownote { grid-column: 1; }
 }
 @media (min-width: 1100px) { #panes { padding: 20px; gap: 20px; } }
 </style>
@@ -291,23 +290,19 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 
 <main id="panes">
   <section id="form-pane">
-    <div id="shell-top"></div>
-    <div id="block-slot"></div>
-    <div id="shell-bottom"></div>
-    <div id="disposition-card" class="section-card"></div>
+    <div id="worksheet"></div>
   </section>
 
   <section id="preview-pane">
     <div id="preview-head">
       <span id="draft-chip" hidden></span>
       <span id="char-counter" title="emsCharts HPI cap: 4,000 characters">0</span>
-      <span id="missing-badge" hidden>0 missing</span>
+      <span id="missing-badge" hidden>0 open</span>
       <button id="polish-toggle" type="button">Polish</button>
       <button id="copy-btn" type="button">Copy</button>
     </div>
     <div id="char-warning" hidden></div>
     <div id="polish-banner" hidden>editing — live sync paused</div>
-    <div id="missing-list" hidden></div>
     <div id="preview"></div>
   </section>
 </main>
@@ -653,9 +648,52 @@ const COND_IDS = {
   ageField: "sh_pt_age",
   molstBlocks: ["doa"],
   molstTemplates: ["cardiacArrest"],
-  loiBlocks: ["cardiac", "abdominal", "metabolic"]
+  loiBlocks: ["cardiac", "abdominal", "metabolic"],
+  // traumaMajor is excluded: it carries its own SMR line.
+  traumaRelevantPrimary: ["traumaGeneral", "traumaMinor", "burns"],
+  headToToePrimary: ["traumaGeneral", "traumaMajor", "traumaMinor", "burns"]
 };
 const CHAR_AMBER = 3200, CHAR_RED = 4000;
+
+/* -------------------------------------------------------------------------
+   DEFAULTS — clinical content, signed off. An unset field that has a default
+   is PROPOSED: it emits its default text faintly and counts against the copy
+   gate until the medic attests it. Accepting writes the value into the draft,
+   after which it is indistinguishable from a typed one.
+   ------------------------------------------------------------------------- */
+const DEFAULTS = {
+sh_dispatch_loc:"above address",sh_response_mode:"emergency",sh_airway_status:"+",sh_breathing_status:"+",sh_pulse_status:"+",sh_lung_sounds:"clear bilat",sh_pulse_desc:"strong, regular radial",sh_skin:"warm, dry, intact",sh_avpu:"Alert",sh_loc:"-",sh_history_source:"Pt",sh_meds:["per list"],sh_allergies:"NKDA",sh_vitals_status:"stable",
+d_als_notify_method:"cell",d_als_changes:"No pt changes throughout txp",d_bls_status:"stable",d_cxl_contact:"No pt contact made.",d_rma_refuse_type:"refuses transport",d_rma_capacity_evidence:"no evidence of AMS, intoxication, head injury, suicidal intent, or irrational behavior",
+card_acs_fluids:"none",card_dys_stability:"hemodynamically stable",card_dys_symptom_status:"unchanged",
+resp_speech:"speaking full sentences",resp_accessory:"N",resp_findings:["none"],resp_o2source:"RA",resp_reassess_wob:"work of breathing improved",
+neur_baseline_source:"family",neur_lams_face:"absent 0",neur_lams_arm:"absent 0",neur_lams_speech:"normal 0",neur_lams_grip:"normal 0",neur_lams_result:"Negative",neur_reassess_lams:"unchanged",
+neur_sz_pattern:"single",neur_sz_duration:"<5 min",neur_sz_postictal:"Y",neur_sz_hx:"Y, typical for pt",neur_sz_meds:"compliant",neur_sz_injuries:"none noted",
+trg_hns_pain:"denies",trg_distracting:"N",trg_intox:"N",trg_dcap_btls:"no DCAP-BTLS observed head-to-toe",trg_distal_cms:"intact x4",trg_hem_control:"none required",trg_tq_conversion:"not attempted",trg_fluids:"none",trg_triage_red:"none",trg_triage_yellow:"none",
+trm_hem_choice:"none",trm_airway_choice:"patent, self-maintained",trm_chest_choice:"symmetric",trm_radial_pulse:"present",trm_hs_pupil_choice:"PEARL",trm_hs_posturing_choice:"none",trm_hs_basilar_choice:["none"],trm_reassess_hem_choice:"bleeding controlled",trm_transport_mode:"by ground",
+tox_coingest_choice:"none reported",tox_airway_choice:"self-maintained",
+met_reassess_choice:"vitals",
+gen_onset_type:"gradual",gen_screen_sepsis_choice:"negative",gen_screen_lams_choice:"0, no focal deficit",
+abd_associated:["none"],abd_exam_tone:"soft",abd_tenderness:"NT",abd_distension:"non-distended",abd_rebound:"none",abd_pulsatile:"none",
+alg_epi_pen:"none",alg_severity_class:"allergic reaction",alg_ns_repeat_choice:"none",
+beh_danger:["neither expressed or observed"],beh_si:"denied",beh_hi:"denied",beh_med_screen_result:"no evidence of trauma, intoxication, hypoxia, or acute medical cause",beh_deescalation_result:"verbal effective, pt cooperative",beh_restraints_choice:"none",beh_sedation:"none",beh_transport_type:"voluntarily",
+brn_scene:"safe",brn_airway:"no facial burns",brn_dressing_type:"dry sterile",brn_iv_lines:"1",
+ncl_l1_choice:"dispatched for",
+ob_wks_method:"pt report",ob_prenatal_care:"Y",
+tmn_distal_cms:"intact",tmn_analgesia_choice:"none",tmn_triage_criteria:"no RED or YELLOW criteria"
+};
+/** Defaults that depend on the draft. Consulted BEFORE DEFAULTS. */
+const DEFAULTS_FN = {
+  sh_secondary_type: function (d) {
+    return COND_IDS.headToToePrimary.indexOf(d.blockIds[0]) >= 0 ? "head-to-toe" : "focused";
+  }
+};
+/** @returns {?(string|Array)} the proposal for a field, or null when it has none */
+function defaultFor(id, d) {
+  d = d || draft();
+  if (DEFAULTS_FN[id]) return DEFAULTS_FN[id](d);
+  const v = DEFAULTS[id];
+  return v === undefined ? null : v;
+}
 
 /* ============================ small utilities ============================ */
 
@@ -779,12 +817,15 @@ function makeDraft(label, unit) {
     id: uid(), label: label || "Call", unit: unit || "35M1", category: "",
     blockIds: [],
     subs: {}, values: {}, forks: {}, esc: {},
+    // line-level attestations for structural proposals: tri attested-as-omit,
+    // esc attested-as-not-fired. Field proposals are accepted into `values`.
+    attested: {},
     naSections: {}, ptContactMade: false, disposition: null, polish: null
   };
 }
 let state = { drafts: [makeDraft("Call")], activeDraft: 0 };
 /** UI-only, never persisted */
-const ui = { expanders: {}, copyPending: false, polishWarned: false };
+const ui = { expanded: {}, open: {}, copyPending: false, polishWarned: false, focusKey: null, condSig: "" };
 
 function draft() { return state.drafts[state.activeDraft]; }
 function val(id) { return draft().values[id]; }
@@ -821,7 +862,8 @@ function context() {
     cond: {
       female_childbearing: condFemale(d),
       molst_relevant: COND_IDS.molstBlocks.some(stacked) || COND_IDS.molstTemplates.some(stacked),
-      loi_relevant: COND_IDS.loiBlocks.some(stacked)
+      loi_relevant: COND_IDS.loiBlocks.some(stacked),
+      trauma_relevant: COND_IDS.traumaRelevantPrimary.indexOf(d.blockIds[0]) >= 0
     }
   };
 }
@@ -850,6 +892,15 @@ function lineTouched(line, d) {
 }
 function triMode(lineId) { return draft().values["__tri__" + lineId] || "omit"; }
 function setTriMode(lineId, mode) { draft().values["__tri__" + lineId] = mode; }
+function attested(lineId) { return !!(draft().attested || {})[lineId]; }
+function setAttested(lineId, on) {
+  const a = draft().attested || (draft().attested = {});
+  if (on) a[lineId] = true; else delete a[lineId];
+}
+/** A tri line is settled once a mode was picked, or omit was attested. */
+function triSettled(lineId) { return nonEmpty(draft().values["__tri__" + lineId]) || attested(lineId); }
+/** An esc line is settled once it fired, or not-fired was attested. */
+function escSettled(lineId) { return draft().esc[lineId] === "fired" || attested(lineId); }
 function forkSel(lineId) {
   const v = draft().forks[lineId];
   return Array.isArray(v) ? v : (nonEmpty(v) ? [v] : []);
@@ -878,32 +929,64 @@ function renderParts(parts, c) {
   return out;
 }
 
-/** @returns {string} the fill's value, a flagged blank, or "" */
+/**
+ * THE only place a sentinel pair is emitted. Every pair records exactly one entry,
+ * in the same order, so assemblyHtml's k-th-pair ↔ k-th-entry walk cannot drift.
+ * @returns {string} sentinel-wrapped text
+ */
+function blankSpan(c, fieldId, hint, label, kind, text) {
+  noteMissing(c, fieldId, hint, label, kind);
+  return BL0 + stripSentinels(text) + BL1;
+}
+
+/**
+ * What a field would emit if its proposal were accepted. Rendered into a throwaway
+ * collector: a default whose option carries embedded blanks (met_reassess_choice,
+ * ob_prenatal_care, …) must not double-count those blanks before it is accepted.
+ * @returns {string} plain text, no sentinels
+ */
+function proposedText(c, render) {
+  const sub = { ctx: c.ctx, line: c.line, sectionId: c.sectionId, sectionName: c.sectionName, missing: [] };
+  return stripSentinels(render(sub));
+}
+
+/** @returns {string} the fill's value, a proposal, a flagged blank, or "" */
 function renderFill(p, c) {
   const v = c.ctx.d.values[p.f];
   if (nonEmpty(v)) return String(v);
-  if (p.req) { noteMissing(c, p.f, p.hint); return BL0 + "___" + BL1; }
+  const def = defaultFor(p.f, c.ctx.d);
+  if (def != null) return blankSpan(c, p.f, p.hint, null, "proposed", String(def));
+  if (p.req) return blankSpan(c, p.f, p.hint, null, "missing", "___");
   return "";
 }
 
-/** @returns {string} Oxford-joined selection text, a flagged blank, or "" */
+/** @returns {string} Oxford-joined selection text, a proposal, a flagged blank, or "" */
 function renderChoice(p, c) {
   const sel = c.ctx.d.values[p.id];
   const picked = p.multi ? (Array.isArray(sel) ? sel : []) : (nonEmpty(sel) ? [sel] : []);
   if (picked.length === 0) {
-    if (p.req) { noteMissing(c, p.id, p.hint); return BL0 + "___" + BL1; }
+    const def = defaultFor(p.id, c.ctx.d);
+    if (def != null) {
+      const labs = Array.isArray(def) ? def : [def];
+      const text = proposedText(c, function (sub) {
+        return oxford(labs.map(function (lab) { return choiceOptionText(p, lab, sub); })
+          .filter(function (t) { return t !== ""; }));
+      });
+      return blankSpan(c, p.id, p.hint, null, "proposed", text);
+    }
+    if (p.req) return blankSpan(c, p.id, p.hint, null, "missing", "___");
     return "";
   }
   const texts = picked.map(function (lab) { return choiceOptionText(p, lab, c); })
     .filter(function (t) { return t !== ""; });
-  if (texts.length === 0 && p.req) { noteMissing(c, p.id, p.hint); return BL0 + "___" + BL1; }
+  if (texts.length === 0 && p.req) return blankSpan(c, p.id, p.hint, null, "missing", "___");
   return oxford(texts);
 }
 function choiceOptionText(p, lab, c) {
   if (lab === OTHER) {
     const t = c.ctx.d.values[p.id + "__other"];
     if (nonEmpty(t)) return String(t);
-    if (p.req) { noteMissing(c, p.id + "__other", "other"); return BL0 + "___" + BL1; }
+    if (p.req) return blankSpan(c, p.id + "__other", "other", null, "missing", "___");
     return "";
   }
   const o = (p.c || []).find(function (x) { return optLabel(x) === lab; });
@@ -927,15 +1010,18 @@ function aoxPicked(values, id) {
   const have = Array.isArray(sel) ? sel : [];
   return AOX.filter(function (x) { return have.indexOf(x.k) >= 0; });
 }
-/** @returns {string} "N (X, Y, Z)", or a flagged blank followed by the full legend */
+/** Orientation has a STRUCTURAL proposal: all four components. */
+const AOX_KEYS = AOX.map(function (x) { return x.k; });
+function aoxText(rows) {
+  return rows.length + " (" + rows.map(function (x) { return x.a; }).join(", ") + ")";
+}
+/** @returns {string} "N (X, Y, Z)", or the ×4 proposal */
 function renderAox(p, c) {
   const picked = aoxPicked(c.ctx.d.values, p.aox);
   if (picked.length === 0) {
-    noteMissing(c, p.aox, null, "orientation");
-    return BL0 + "___" + BL1 + " (P, P, T, E)";
+    return blankSpan(c, p.aox, null, "orientation", "proposed", aoxText(AOX));
   }
-  const letters = picked.map(function (x) { return x.a; });
-  return picked.length + " (" + letters.join(", ") + ")";
+  return aoxText(picked);
 }
 
 /** @returns {boolean} does any fill/choice under these parts hold a value? (group activation) */
@@ -950,13 +1036,28 @@ function partsHaveValue(parts, values) {
 }
 
 /** @param {string} [label] overrides the derived tail — for computed parts whose
- *  field id does not read as English (see renderAox). */
-function noteMissing(c, fieldId, hint, label) {
+ *  field id does not read as English (see renderAox).
+ *  @param {string} [kind] "missing" (no default) or "proposed" (default unattested) */
+function noteMissing(c, fieldId, hint, label, kind) {
   const lineLabel = c.line.label || c.line.id;
   const fieldLabel = label || fieldTail(fieldId, c.line.id, hint);
   c.missing.push({
     lineId: c.line.id, fieldId: fieldId, sectionId: c.sectionId, sectionName: c.sectionName,
-    lineLabel: lineLabel, fieldLabel: fieldLabel,
+    lineLabel: lineLabel, fieldLabel: fieldLabel, kind: kind || "missing",
+    label: lineLabel + " — " + fieldLabel
+  });
+}
+/**
+ * An open item that belongs to a LINE rather than to a blank in the text: a tri line
+ * still proposing omit, an esc line still proposing not-fired, an unpicked disposition.
+ * These emit no sentinel, so assemblyHtml must skip them when it walks pairs; and they
+ * go straight to the outer list, since a tri line that omits emits no row to commit on.
+ */
+function noteLineLevel(missing, line, sectionId, sectionName, fieldId, fieldLabel, kind) {
+  const lineLabel = line.label || line.id;
+  missing.push({
+    lineId: line.id, fieldId: fieldId, sectionId: sectionId, sectionName: sectionName,
+    lineLabel: lineLabel, fieldLabel: fieldLabel, kind: kind, lineLevel: true,
     label: lineLabel + " — " + fieldLabel
   });
 }
@@ -983,6 +1084,11 @@ function renderLine(line, ctx, sectionId, sectionName, missing) {
 
   if (line.kind === "fork") {
     const chosen = forkSel(line.id);
+    if (!chosen.length) {
+      // An unpicked pathway is an unanswered question, not a silent omission.
+      noteLineLevel(missing, line, sectionId, sectionName, "__fork__" + line.id, "pathway", "missing");
+      return [];
+    }
     let rows = [];
     chosen.forEach(function (lab) {
       const o = (line.options || []).find(function (x) { return x.label === lab; });
@@ -996,19 +1102,29 @@ function renderLine(line, ctx, sectionId, sectionName, missing) {
     return rows;
   }
 
-  let raw = "", withheld = false;
+  let raw = "", withheld = false, proposed = false;
   if (line.kind === "std") raw = renderParts(line.parts, c);
   else if (line.kind === "tri") {
     const m = triMode(line.id);
-    if (m === "omit") return [];
+    if (m === "omit") {
+      // Omit emits nothing, but an unattested omit is still an open decision.
+      if (!triSettled(line.id)) {
+        noteLineLevel(missing, line, sectionId, sectionName, "__tri__" + line.id, "omit", "proposed");
+      }
+      return [];
+    }
     withheld = m === "withheld";
     raw = renderParts(m === "given" ? line.given : line.withheld, c);
   } else if (line.kind === "esc") {
     const fired = ctx.d.esc[line.id] === "fired";
+    proposed = !escSettled(line.id);
+    if (proposed) {
+      noteLineLevel(missing, line, sectionId, sectionName, "__esc__" + line.id, "not fired", "proposed");
+    }
     raw = renderParts(fired ? line.fired : line.normal, c);
   }
   if (stripSentinels(raw).trim() === "") return [];
-  return commit([{ lineId: line.id, raw: raw, withheld: withheld }]);
+  return commit([{ lineId: line.id, raw: raw, withheld: withheld, proposed: proposed }]);
 }
 
 /**
@@ -1128,15 +1244,21 @@ function assemble(ctx) {
   if (!slotPlaced) assembleSlot(ctx, missing).forEach(function (x) { sections.push(x); });
 
   // DOA block replaces the disposition entirely (doc §14).
-  if (!ctx.doaActive && ctx.d.disposition) {
+  if (!ctx.doaActive) {
     const dsp = (DOC.dispositions || []).find(function (x) { return x.id === ctx.d.disposition; });
     if (dsp) {
       const sec = renderSection("disp_" + dsp.id, dsp.name, dsp.lines, ctx, missing);
       if (sec) sections.push(sec);
+    } else {
+      // The disposition is never proposed — an unpicked one is an open blank.
+      noteLineLevel(missing, DISPO_LINE, "disposition", "Disposition",
+        "__dispo__", "disposition", "missing");
     }
   }
   return { sections: sections, missing: missing };
 }
+/** The disposition picker is a worksheet row like any other, so it needs a line shape. */
+const DISPO_LINE = { id: "disposition", kind: "dispo", label: "Disposition" };
 
 /**
  * Concatenate one section's rows. A row flagged `join` (line-level joinPrev) rides the
@@ -1155,10 +1277,26 @@ function joinRows(rows, paint) {
   return out;
 }
 
+/**
+ * Copy renders every flagged span — proposed as well as missing — as "___", so the
+ * character count never counts text the medic has not stood behind. The copy gate
+ * keeps both counts at zero, so in practice this is only ever the honest counter.
+ * @returns {string} sentinel-free text
+ */
+function blankText(raw) {
+  const parts = String(raw).split(BL0);
+  let out = parts[0];
+  for (let i = 1; i < parts.length; i++) {
+    const j = parts[i].indexOf(BL1);
+    out += "___" + (j < 0 ? parts[i] : parts[i].slice(j + 1));
+  }
+  return out;
+}
+
 /** @returns {string} the narrative exactly as it will be pasted (no sentinels) */
 function assemblyText(asm) {
   return asm.sections.map(function (s) {
-    return joinRows(s.lines, function (l) { return stripSentinels(l.raw); });
+    return joinRows(s.lines, function (l) { return blankText(l.raw); });
   }).filter(function (t) { return t !== ""; }).join("\n\n");
 }
 
@@ -1166,6 +1304,7 @@ function assemblyText(asm) {
 function assemblyHtml(asm) {
   const missingByLine = {};
   (asm.missing || []).forEach(function (m) {
+    if (m.lineLevel) return;                 // no sentinel pair belongs to these
     if (!missingByLine[m.lineId]) missingByLine[m.lineId] = [];
     missingByLine[m.lineId].push(m);
   });
@@ -1177,10 +1316,13 @@ function assemblyHtml(asm) {
         blankCursor[l.lineId] = i + 1;
         const m = (missingByLine[l.lineId] || [])[i];
         const inner = match.slice(1, -1);
-        return '<span class="pv-blank"' + (m ? ' data-field="' + esc(m.fieldId) + '"' : "") +
+        let cls = m && m.kind === "proposed" ? "pv-proposed" : "pv-blank";
+        if (m && ui.focusKey === fieldKey(m.lineId, m.fieldId)) cls += " pv-focus";
+        return '<span class="' + cls + '"' + (m ? ' data-field="' + esc(m.fieldId) + '"' : "") +
           ">" + inner + "</span>";
       });
       return '<span class="pv-line' + (l.withheld ? " pv-withheld" : "") +
+        (l.proposed ? " pv-proposed" : "") +
         '" data-line="' + esc(l.lineId) + '">' + body + "</span>";
     });
   }).filter(function (t) { return t !== ""; }).join("\n\n");
@@ -1194,10 +1336,12 @@ function charCount(text) {
 
 /* ============================ FORM RENDERING ============================ */
 
+/** The preview runs FIRST: the worksheet paints every field's state from the open
+ *  items the assembler just produced, so the two views can never disagree. */
 function renderAll() {
   renderTopbar();
-  renderForm();
   renderPreview();
+  renderWorksheet();
   scheduleSave();
 }
 
@@ -1246,73 +1390,80 @@ function renderTopbar() {
   paintCopyLabel();
 }
 
-function renderForm() {
+/** A field is addressed by its line and its id — the same pair the assembler stamps
+ *  on every open item, so worksheet state and copy gate can never disagree. */
+function fieldKey(lineId, fieldId) { return lineId + "|" + fieldId; }
+
+/** The last assembly's open items, by field key. Rebuilt with every preview. */
+function buildOpenIndex(asm) {
+  const idx = Object.create(null);
+  ((asm && asm.missing) || []).forEach(function (m) {
+    const k = fieldKey(m.lineId, m.fieldId);
+    if (!idx[k]) idx[k] = m;
+  });
+  ui.open = idx;
+}
+
+/** Everything that decides which ROWS exist. A value edit that leaves this unchanged
+ *  never rebuilds the worksheet, so a caret in a text blank survives typing. */
+function condSignature(ctx) {
+  return Object.keys(ctx.cond).map(function (k) { return ctx.cond[k] ? "1" : "0"; }).join("") +
+    "|" + ctx.blockIds.join(",") + "|" + (ctx.d.disposition || "") +
+    "|" + (ctx.collapse ? 1 : 0) + "|" + (ctx.doaActive ? 1 : 0);
+}
+
+/** A cond/opt line stays folded into a "+ label" row until it is relevant or opened. */
+function lineDeferred(line, ctx) {
+  if (!line.cond && !line.opt) return false;
+  if (ui.expanded[line.id]) return false;
+  if (lineTouched(line, ctx.d)) return false;
+  return line.cond ? !ctx.cond[line.cond] : true;
+}
+
+function renderWorksheet() {
   const ctx = context();
-  const top = document.getElementById("shell-top");
-  const slot = document.getElementById("block-slot");
-  const bot = document.getElementById("shell-bottom");
-  top.innerHTML = ""; slot.innerHTML = ""; bot.innerHTML = "";
-
+  const ws = document.getElementById("worksheet");
+  const hadFocus = ws.contains(document.activeElement);
+  const caret = textCaret(document.activeElement);
+  ws.innerHTML = "";
   const anchor = slotAnchorId();
-  let target = top;
+  let slotPlaced = false;
   ((DOC.shell && DOC.shell.sections) || []).forEach(function (s) {
-    target.appendChild(shellCard(s, ctx));
-    if (s.id === anchor) target = bot;
+    shellSection(ws, s, ctx);
+    if (s.id === anchor) { ownerRows(ws, ctx); slotPlaced = true; }
   });
-
-  // form order mirrors assembly order: one card per stacked owner, in add order
-  ctx.owners.forEach(function (o) { slot.appendChild(ownerCard(o.owner, o.kind, ctx)); });
-
-  renderDisposition(ctx);
-  syncCondPlacement();
+  if (!slotPlaced) ownerRows(ws, ctx);
+  if (!ctx.doaActive) dispositionSection(ws, ctx);
+  ui.condSig = condSignature(ctx);
+  settleFocus();
+  if (hadFocus) restoreWorksheetFocus(caret);
 }
 
-function cardShell(id, name) {
-  const card = el("div", "section-card");
-  card.dataset.section = id;
-  const head = el("div", "card-head");
-  head.appendChild(el("h2", "card-title", name));
-  const tools = el("span", "card-tools");
+function sectionNode(host, id, name) {
+  const sec = el("div", "ws-sec");
+  sec.dataset.section = id;
+  const head = el("div", "ws-sechead");
+  head.appendChild(el("h2", "ws-secname", name));
+  const tools = el("span", "ws-sectools");
   head.appendChild(tools);
-  const body = el("div", "card-body");
-  const lines = el("div", "lines");
-  const exp = el("div", "expander");
-  const expBtn = el("button", "expander-toggle", "+ add detail");
-  expBtn.type = "button";
-  const expBody = el("div", "expander-body");
-  expBody.hidden = !ui.expanders[id];
-  expBtn.addEventListener("click", function () {
-    ui.expanders[id] = !ui.expanders[id];
-    expBody.hidden = !ui.expanders[id];
-  });
-  exp.appendChild(expBtn); exp.appendChild(expBody);
-  body.appendChild(lines); body.appendChild(exp);
-  card.appendChild(head); card.appendChild(body);
-  card._lines = lines; card._exp = expBody; card._expWrap = exp; card._tools = tools; card._body = body;
-  return card;
+  const rows = el("div", "ws-rows");
+  sec.appendChild(head); sec.appendChild(rows);
+  host.appendChild(sec);
+  sec._rows = rows; sec._tools = tools;
+  return sec;
 }
 
-/** Section-level `note` is doc guidance: helper text in the card, never in output. */
-function sectionNote(card, s) {
-  if (!s.note) return;
-  card._body.insertBefore(el("div", "card-note", s.note), card._body.firstChild);
-}
-
-function shellCard(s, ctx) {
-  const card = cardShell(s.id, s.name);
+function shellSection(host, s, ctx) {
   const d = ctx.d;
-
+  const sec = sectionNode(host, s.id, s.name);
   if (hasBehavior(s, "cancelled-collapse") && ctx.collapse) {
-    card.classList.add("collapsed");
-    card._body.innerHTML = "";
-    sectionNote(card, s);
     const lbl = el("label", "pt-contact");
     const cb = document.createElement("input");
     cb.type = "checkbox"; cb.checked = !!d.ptContactMade;
     cb.addEventListener("change", function () { d.ptContactMade = cb.checked; structuralEdit(); });
     lbl.appendChild(cb); lbl.appendChild(document.createTextNode(" pt contact made"));
-    card._body.appendChild(lbl);
-    return card;
+    sec._rows.appendChild(lbl);
+    return;
   }
   if (ctx.doaActive && hasBehavior(s, "doa-na")) {
     const btn = el("button", "na-toggle" + (d.naSections[s.id] ? " on" : ""), "N/A");
@@ -1321,144 +1472,248 @@ function shellCard(s, ctx) {
       if (d.naSections[s.id]) delete d.naSections[s.id]; else d.naSections[s.id] = true;
       structuralEdit();
     });
-    card._tools.appendChild(btn);
-    if (d.naSections[s.id]) {
-      card.classList.add("na");
-      card._lines.inert = true;
-      card._expWrap.inert = true;
-    }
+    sec._tools.appendChild(btn);
+    if (d.naSections[s.id]) { sec.classList.add("ws-na"); sec._rows.inert = true; }
   }
-  sectionNote(card, s);
-  fillCardLines(card, s.lines, ctx);
-  return card;
+  if (s.note) sec._rows.appendChild(el("div", "ws-note", s.note));
+  (s.lines || []).forEach(function (l) { lineRow(sec._rows, l, ctx); });
 }
 
-/** One card per stacked owner — blocks and templates render identically. */
-function ownerCard(owner, kind, ctx) {
-  const card = cardShell(kind + "_" + owner.id, owner.name);
-  const x = el("button", "rm-block", "×");
-  x.type = "button"; x.title = "remove " + kind;
-  x.addEventListener("click", function () { removeBlock(owner.id); });
-  card._tools.appendChild(x);
-  if (owner.intro) card._lines.appendChild(el("div", "card-intro", owner.intro));
-
-  if (owner.subBlocks && owner.subBlocks.length) {
-    const row = el("div", "sub-row");
-    const multi = owner.subBlocks.some(function (sb) { return sb.multi; });
-    owner.subBlocks.forEach(function (sb) {
-      const on = subActive(owner, sb);
-      const b = el("button", "sub-pill" + (on ? " on" : ""), sb.name);
-      b.type = "button";
-      b.addEventListener("click", function () { toggleSub(owner, sb, multi); });
-      row.appendChild(b);
-    });
-    card._lines.appendChild(row);
-  }
-
-  // form order mirrors assembly order: sub-blocks first, then block-level lines
-  (owner.subBlocks || []).forEach(function (sb) {
-    if (!subActive(owner, sb)) return;
-    const grp = el("div", "sub-group");
-    grp.appendChild(el("div", "sub-head", sb.name));
-    const host = card._lines;           // borrow the card so _idx / _exp stay shared
-    card._lines = grp;
-    fillCardLines(card, sb.lines, ctx);
-    card._lines = host;
-    host.appendChild(grp);
-  });
-  fillCardLines(card, owner.lines, ctx);
-
-  if (owner.handoff) maybeHandoffButton(card, owner, ctx);
-  return card;
-}
-
-function fillCardLines(card, lines, ctx) {
-  // idx continues across calls on the same card so that lines from different
-  // sub-blocks keep their document order inside the SHARED expander
-  if (card._idx == null) card._idx = 0;
-  (lines || []).forEach(function (line) {
-    const node = lineNode(line, ctx);
-    node.dataset.idx = String(card._idx++);
-    const deferred = (line.cond && !ctx.cond[line.cond] && !lineTouched(line, ctx.d)) ||
-      (line.opt && !lineTouched(line, ctx.d));
-    (deferred ? card._exp : card._lines).appendChild(node);
-  });
-  if (card._expWrap) card._expWrap.hidden = card._exp.children.length === 0;
-}
-
-function lineNode(line, ctx) {
-  const node = el("div", "line line-" + line.kind);
-  node.dataset.line = line.id;
-  if (line.cond) node.dataset.cond = line.cond;
-  if (line.opt) node.dataset.opt = "1";
-  const head = el("div", "line-head");
-  head.appendChild(el("span", "line-label", line.label || line.id));
-  node.appendChild(head);
-
-  if (line.kind === "tri") {
-    const mode = triMode(line.id);
-    head.appendChild(segmented(
-      [{ v: "given", t: "given" }, { v: "withheld", t: withheldWord(line) }, { v: "omit", t: "omit" }],
-      mode, "tri", function (v) { setTriMode(line.id, v); replaceLineNode(line.id); }));
-    if (mode !== "omit") {
-      const body = el("div", "line-inputs");
-      partsNodes(mode === "given" ? line.given : line.withheld, line, ctx, body);
-      node.appendChild(body);
-    }
-  } else if (line.kind === "esc") {
-    const fired = ctx.d.esc[line.id] === "fired";
-    head.appendChild(segmented(
-      [{ v: "normal", t: "not fired" }, { v: "fired", t: "FIRED" }],
-      fired ? "fired" : "normal", "esc", function (v) {
-        if (v === "fired") askEscalate(line);
-        else { delete ctx.d.esc[line.id]; structuralEdit(); }
-      }));
-    if (line.escalatesTo) head.appendChild(el("span", "line-hint", line.escalatesTo));
-    const body = el("div", "line-inputs");
-    partsNodes(fired ? line.fired : line.normal, line, ctx, body);
-    node.appendChild(body);
-  } else if (line.kind === "fork") {
-    const sel = forkSel(line.id);
-    const row = el("div", "fork-row");
-    if (!line.multi) { row.setAttribute("role", "radiogroup"); }
-    (line.options || []).forEach(function (o) {
-      const on = sel.indexOf(o.label) >= 0;
-      const b = el("button", "pill" + (on ? " on" : ""), o.label);
-      b.type = "button";
-      if (line.multi) {
-        b.setAttribute("aria-pressed", on ? "true" : "false");
-      } else {
-        b.setAttribute("role", "radio");
-        b.setAttribute("aria-checked", on ? "true" : "false");
-      }
-      b.addEventListener("click", function () {
-        if (line.multi) {
-          const next = sel.slice();
-          const i = next.indexOf(o.label);
-          if (i >= 0) next.splice(i, 1); else next.push(o.label);
-          ctx.d.forks[line.id] = next;
-        } else {
-          ctx.d.forks[line.id] = sel.indexOf(o.label) >= 0 ? "" : o.label;
-        }
-        structuralEdit();
+/** One section per stacked owner, in add order — the assembler's order exactly. */
+function ownerRows(host, ctx) {
+  ctx.owners.forEach(function (o) {
+    const owner = o.owner, kind = o.kind;
+    const sec = sectionNode(host, kind + "_" + owner.id, owner.name);
+    const x = el("button", "rm-block", "×");
+    x.type = "button"; x.title = "remove " + kind;
+    x.addEventListener("click", function () { removeBlock(owner.id); });
+    sec._tools.appendChild(x);
+    if (owner.intro) sec._rows.appendChild(el("div", "ws-note", owner.intro));
+    if (owner.subBlocks && owner.subBlocks.length) {
+      const row = el("div", "sub-row");
+      const multi = owner.subBlocks.some(function (sb) { return sb.multi; });
+      owner.subBlocks.forEach(function (sb) {
+        const b = el("button", "sub-pill" + (subActive(owner, sb) ? " on" : ""), sb.name);
+        b.type = "button";
+        b.addEventListener("click", function () { toggleSub(owner, sb, multi); });
+        row.appendChild(b);
       });
-      row.appendChild(b);
+      sec._rows.appendChild(row);
+    }
+    (owner.subBlocks || []).forEach(function (sb) {
+      if (!subActive(owner, sb)) return;
+      sec._rows.appendChild(el("div", "ws-subhead", sb.name));
+      (sb.lines || []).forEach(function (l) { lineRow(sec._rows, l, ctx); });
     });
-    node.appendChild(row);
-    const subs = el("div", "fork-lines");
-    sel.forEach(function (lab) {
+    (owner.lines || []).forEach(function (l) { lineRow(sec._rows, l, ctx); });
+    if (owner.handoff) maybeHandoffButton(sec._rows, owner, ctx);
+  });
+}
+
+function dispositionSection(host, ctx) {
+  const sec = sectionNode(host, "disposition", "Disposition");
+  lineRow(sec._rows, DISPO_LINE, ctx);
+  const dsp = (DOC.dispositions || []).find(function (x) { return x.id === ctx.d.disposition; });
+  if (dsp) (dsp.lines || []).forEach(function (l) { lineRow(sec._rows, l, ctx); });
+}
+
+/* ---- rows and fields ---- */
+
+/** A slash-joined label ("Airway/breathing/pulse/skin") is one unbreakable word to the
+ *  layout engine. A zero-width space after each "/" gives it legal break points, so the
+ *  narrow label column never has to split a word down the middle. */
+function wrapLabel(s) { return replaceAllStr(String(s), "/", "/\u200B"); }
+
+function lineRow(host, line, ctx) {
+  const row = el("div", "ws-row ws-k-" + line.kind);
+  row.dataset.line = line.id;
+  const bag = el("span", "ws-fields");
+  if (lineDeferred(line, ctx)) {
+    row.classList.add("ws-deferred");
+    row.appendChild(el("span", "ws-label", wrapLabel(line.label || line.id)));
+    bag.appendChild(fieldNode({ line: line, id: "__open__", type: "open" }, ctx));
+    row.appendChild(bag);
+    host.appendChild(row);
+    return;
+  }
+  row.appendChild(el("span", "ws-label", wrapLabel(line.label || line.id)));
+  const fields = lineFields(line, ctx);
+  fields.forEach(function (f, i) {
+    if (i) bag.appendChild(el("span", "ws-sep", "·"));
+    bag.appendChild(fieldNode(f, ctx));
+  });
+  if (!fields.length) bag.appendChild(el("span", "ws-none", "—"));
+  row.appendChild(bag);
+  if (line.note) row.appendChild(el("span", "ws-rownote", line.note));
+  host.appendChild(row);
+  if (line.kind === "fork") {
+    const sub = el("div", "ws-sub");
+    forkSel(line.id).forEach(function (lab) {
       const o = (line.options || []).find(function (x) { return x.label === lab; });
       if (!o) return;
-      (o.lines || []).forEach(function (sub) { subs.appendChild(lineNode(sub, ctx)); });
+      (o.lines || []).forEach(function (s) { lineRow(sub, s, ctx); });
     });
-    node.appendChild(subs);
-  } else {
-    const body = el("div", "line-inputs");
-    partsNodes(line.parts, line, ctx, body);
-    node.appendChild(body);
+    if (sub.children.length) host.appendChild(sub);
   }
-  if (line.note) node.appendChild(el("div", "line-note", line.note));
-  return node;
+}
+
+/**
+ * The focusable fields of one line, in reading order. A structural decision — tri
+ * mode, escalation, fork branch, disposition — is a field like any other.
+ * @returns {Array<{line:Object, id:string, type:string, p:Object=}>}
+ */
+function lineFields(line, ctx) {
+  const out = [];
+  if (line.kind === "tri") {
+    out.push({ line: line, id: "__tri__" + line.id, type: "tri" });
+    const m = triMode(line.id);
+    if (m !== "omit") partFields(m === "given" ? line.given : line.withheld, line, ctx, out);
+  } else if (line.kind === "esc") {
+    out.push({ line: line, id: "__esc__" + line.id, type: "esc" });
+    partFields(ctx.d.esc[line.id] === "fired" ? line.fired : line.normal, line, ctx, out);
+  } else if (line.kind === "fork") {
+    out.push({ line: line, id: "__fork__" + line.id, type: "fork" });
+  } else if (line.kind === "dispo") {
+    out.push({ line: line, id: "__dispo__", type: "dispo" });
+  } else {
+    partFields(line.parts, line, ctx, out);
+  }
+  return out;
+}
+function partFields(parts, line, ctx, out) {
+  (parts || []).forEach(function (p) {
+    if (typeof p === "string") return;
+    if (p.f) { out.push({ line: line, id: p.f, type: "text", p: p }); return; }
+    if (p.c) {
+      out.push({ line: line, id: p.id, type: p.multi ? "chips" : "pills", p: p });
+      const sel = ctx.d.values[p.id];
+      const picked = p.multi ? (Array.isArray(sel) ? sel : []) : (nonEmpty(sel) ? [sel] : []);
+      if (picked.indexOf(OTHER) >= 0) {
+        out.push({ line: line, id: p.id + "__other", type: "text",
+                   p: { f: p.id + "__other", hint: "other…", w: 16 } });
+      }
+      (p.c || []).forEach(function (o) {          // an option's own blanks, once picked
+        if (typeof o === "string" || !o.parts || picked.indexOf(o.label) < 0) return;
+        partFields(o.parts, line, ctx, out);
+      });
+      return;
+    }
+    if (p.aox) { out.push({ line: line, id: p.aox, type: "aox", p: p }); return; }
+    if (p.g) { partFields(p.g, line, ctx, out); return; }
+  });
+}
+
+function fieldLabel(f) {
+  if (f.type === "aox") return "AOx";
+  if (f.type === "text" || f.type === "pills" || f.type === "chips") {
+    return fieldTail(f.id, f.line.id, f.p && f.p.hint);
+  }
+  return "";                                     // structural fields read as bare values
+}
+
+function fieldEntry(f) { return ui.open[fieldKey(f.line.id, f.id)] || null; }
+function fieldSet(f) {
+  const d = draft();
+  if (f.type === "tri") return triSettled(f.line.id);
+  if (f.type === "esc") return escSettled(f.line.id);
+  if (f.type === "fork") return forkSel(f.line.id).length > 0;
+  if (f.type === "dispo") return !!d.disposition;
+  if (f.type === "open") return false;
+  return nonEmpty(d.values[f.id]);
+}
+/** CONFIRMED / PROPOSED / AMBER, read straight off the assembler's open items. */
+function fieldState(f) {
+  if (f.type === "open") return "open";
+  const e = fieldEntry(f);
+  if (e) return e.kind === "proposed" ? "proposed" : "amber";
+  return fieldSet(f) ? "set" : "idle";
+}
+
+function choiceSummary(p, labs, d) {
+  return oxford(labs.map(function (lab) {
+    if (lab !== OTHER) return String(lab);
+    const t = d.values[p.id + "__other"];
+    return nonEmpty(t) ? String(t) : "other…";
+  }));
+}
+function fieldValueText(f) {
+  const d = draft();
+  if (f.type === "open") return "+ add detail";
+  if (f.type === "tri") {
+    const m = triMode(f.line.id);
+    return m === "withheld" ? withheldWord(f.line) : m;
+  }
+  if (f.type === "esc") return d.esc[f.line.id] === "fired" ? "FIRED" : "not fired";
+  // branch labels run long, so an unpicked fork prompts rather than listing them
+  if (f.type === "fork") { const s = forkSel(f.line.id); return s.length ? s.join(", ") : "pick one"; }
+  if (f.type === "dispo") {
+    const dsp = (DOC.dispositions || []).find(function (x) { return x.id === d.disposition; });
+    return dsp ? dsp.name : "—";
+  }
+  if (f.type === "aox") {
+    const picked = aoxPicked(d.values, f.id);
+    return aoxText(picked.length ? picked : AOX);
+  }
+  if (f.type === "text") {
+    const v = d.values[f.id];
+    if (nonEmpty(v)) return String(v);
+    const def = defaultFor(f.id, d);
+    if (def != null) return String(def);
+    return (f.p && f.p.hint) || "—";
+  }
+  const p = f.p;
+  const sel = d.values[p.id];
+  const picked = p.multi ? (Array.isArray(sel) ? sel : []) : (nonEmpty(sel) ? [sel] : []);
+  if (picked.length) return choiceSummary(p, picked, d);
+  const def = defaultFor(p.id, d);
+  if (def != null) return choiceSummary(p, Array.isArray(def) ? def : [def], d);
+  return p.hint || "—";
+}
+
+function fieldNode(f, ctx) {
+  const st = fieldState(f);
+  const n = el("span", "ws-field ws-" + st);
+  n.dataset.field = f.id;
+  n.dataset.line = f.line.id;
+  n.dataset.ftype = f.type;
+  n.dataset.key = fieldKey(f.line.id, f.id);
+  n._f = f;
+  if (ui.focusKey === n.dataset.key) fieldEditor(n, f, ctx);
+  else fieldSummary(n, f, st);
+  return n;
+}
+function fieldSummary(n, f, st) {
+  const lab = fieldLabel(f);
+  if (lab) n.appendChild(el("span", "ws-flabel", lab + ":"));
+  n.appendChild(el("span", "ws-fval" + fieldTone(f), fieldValueText(f)));
+  if (st === "set") n.appendChild(el("span", "ws-check", "✓"));
+}
+/** A settled structural decision keeps its clinical colour in the summary: a fired
+ *  escalation must never read like an ordinary confirmed value. */
+function fieldTone(f) {
+  if (f.type === "esc") return draft().esc[f.line.id] === "fired" ? " tone-fired" : "";
+  if (f.type === "tri" && triSettled(f.line.id)) {
+    const m = triMode(f.line.id);
+    return m === "given" ? " tone-given" : m === "withheld" ? " tone-withheld" : "";
+  }
+  return "";
+}
+/** The cursor's field shows its real control plus the key legend. */
+function fieldEditor(n, f, ctx) {
+  n.classList.add("ws-editing");
+  const lab = fieldLabel(f);
+  if (lab) n.appendChild(el("span", "ws-flabel", lab + ":"));
+  const box = el("span", "ws-ctl");
+  n.appendChild(box);
+  if (f.type === "text") textControl(n, box, f);
+  else if (f.type === "aox") aoxControl(n, box, f, ctx);
+  else if (f.type === "tri") triControl(n, box, f, ctx);
+  else if (f.type === "esc") escControl(n, box, f, ctx);
+  else if (f.type === "fork") forkControl(n, box, f, ctx);
+  else if (f.type === "dispo") dispoControl(n, box, f, ctx);
+  else if (f.type === "open") openControl(n, box, f);
+  else choiceControl(n, box, f, ctx);
+  n.appendChild(el("span", "ws-keyhint", "↵ accept · type to change · Tab skip"));
 }
 
 function withheldWord(line) {
@@ -1467,240 +1722,432 @@ function withheldWord(line) {
   return "withheld";
 }
 
-/** Rebuild one line's DOM in place — used for tri / choice / structural-within-line edits. */
-function replaceLineNode(lineId) {
-  const old = document.querySelector('#form-pane .line[data-line="' + cssEsc(lineId) + '"]');
-  if (!old) { renderAll(); return; }
-  const rec = LINE_INDEX[lineId];
-  if (!rec) { renderAll(); return; }
-  const refocus = captureLineFocus(old);
-  const fresh = lineNode(rec.line, context());
-  fresh.dataset.idx = old.dataset.idx || "0";
-  old.parentNode.replaceChild(fresh, old);
-  restoreLineFocus(fresh, refocus);
-  syncCondPlacement();
-  if (draft().polish) { warnPolish(); scheduleSave(); return; }
-  renderPreview(); scheduleSave();
-}
-/** @returns {?{field:string, idx:number}} the active control's data-field and its
- *  position among same-data-field siblings in `node`, or null when nothing to restore */
-function captureLineFocus(node) {
-  try {
-    const active = document.activeElement;
-    if (!active || !node.contains(active)) return null;
-    const field = active.closest ? active.closest("[data-field]") : null;
-    if (!field) return null;
-    const group = node.querySelectorAll('[data-field="' + cssEsc(field.dataset.field) + '"]');
-    const idx = Array.prototype.indexOf.call(group, field);
-    if (idx < 0) return null;
-    return { field: field.dataset.field, idx: idx };
-  } catch (err) { return null; }
-}
-/** Best-effort focus restore after a line rebuild; a miss is a silent no-op. */
-function restoreLineFocus(node, refocus) {
-  if (!refocus) return;
-  try {
-    const group = node.querySelectorAll('[data-field="' + cssEsc(refocus.field) + '"]');
-    if (!group.length) return;
-    const target = group[Math.min(refocus.idx, group.length - 1)];
-    if (target && typeof target.focus === "function") target.focus({ preventScroll: true });
-  } catch (err) { /* silent no-op */ }
-}
 function cssEsc(s) { return String(s).replace(/["\\]/g, "\\$&"); }
 
-function segmented(opts, current, cls, onPick) {
-  const wrap = el("div", "seg seg-" + cls);
-  wrap.setAttribute("role", "radiogroup");
-  opts.forEach(function (o) {
-    const b = el("button", "seg-btn" + (o.v === current ? " on seg-" + o.v : ""), o.t);
-    b.type = "button";
-    b.setAttribute("role", "radio");
-    b.setAttribute("aria-checked", o.v === current ? "true" : "false");
-    b.addEventListener("click", function () { onPick(o.v); });
-    wrap.appendChild(b);
+/* ---- roving focus ---- */
+
+function fieldNodes() {
+  return Array.prototype.slice.call(document.querySelectorAll("#worksheet .ws-field"));
+}
+function isUnresolved(n) {
+  return n.classList.contains("ws-amber") || n.classList.contains("ws-proposed");
+}
+function nodeForKey(key) {
+  if (!key) return null;
+  return document.querySelector('#worksheet .ws-field[data-key="' + cssEsc(key) + '"]');
+}
+function textCaret(node) {
+  try {
+    if (node && node.tagName === "INPUT" && node.selectionStart != null) return node.selectionStart;
+  } catch (err) { /* some input types throw on selectionStart */ }
+  return null;
+}
+/** Rebuild one .ws-field in place (summary ↔ editor) and mark its row. */
+function repaintField(key) {
+  const old = nodeForKey(key);
+  if (!old) return null;
+  const fresh = fieldNode(old._f, context());
+  old.parentNode.replaceChild(fresh, old);
+  const row = fresh.closest(".ws-row");
+  if (row) row.classList.toggle("ws-focused", ui.focusKey === key);
+  return fresh;
+}
+/** Move the cursor. Repaints only the two affected fields — a focus move must never
+ *  re-run assembly, or worksheet and preview would chase each other. */
+function focusFieldNode(n, scroll) {
+  if (!n) return;
+  const prev = ui.focusKey;
+  ui.focusKey = n.dataset.key;
+  if (prev && prev !== ui.focusKey) repaintField(prev);
+  const live = repaintField(ui.focusKey) || n;
+  markPreviewFocus();
+  if (scroll) {
+    const instant = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    live.scrollIntoView({ block: "center", behavior: instant ? "auto" : "smooth" });
+  }
+  focusControl(live);
+}
+function focusControl(n, caret) {
+  if (!n) return;
+  const inner = n.querySelector("input") ||
+    (n._opts ? n._opts.children[n._hl] : null) || n.querySelector("button");
+  const target = inner || n;
+  if (!inner) target.tabIndex = 0;         // an editor always has one; a summary does not
+  try {
+    target.focus({ preventScroll: true });
+    if (caret != null && target.setSelectionRange) target.setSelectionRange(caret, caret);
+  } catch (err) { /* silent no-op */ }
+}
+/** After a rebuild: keep the cursor where it was, else park it on the first open item. */
+function settleFocus() {
+  const all = fieldNodes();
+  if (!all.length) { ui.focusKey = null; return; }
+  let n = nodeForKey(ui.focusKey);
+  if (!n) {
+    n = all.find(isUnresolved) || all[0];
+    ui.focusKey = n.dataset.key;
+    n = repaintField(ui.focusKey) || n;
+  }
+  const row = n.closest(".ws-row");
+  if (row) row.classList.add("ws-focused");
+  markPreviewFocus();
+}
+function restoreWorksheetFocus(caret) { focusControl(nodeForKey(ui.focusKey), caret); }
+
+/** The prose side of the cursor — repainted directly, never through renderPreview. */
+function markPreviewFocus() {
+  const pv = document.getElementById("preview");
+  if (!pv) return;
+  pv.querySelectorAll(".pv-focus").forEach(function (n) { n.classList.remove("pv-focus"); });
+  if (!ui.focusKey) return;
+  const cut = ui.focusKey.indexOf("|");
+  const line = pv.querySelector('.pv-line[data-line="' + cssEsc(ui.focusKey.slice(0, cut)) + '"]');
+  if (!line) return;
+  const span = line.querySelector('[data-field="' + cssEsc(ui.focusKey.slice(cut + 1)) + '"]');
+  if (span) span.classList.add("pv-focus");
+}
+
+/** Repaint every summary against the fresh assembly — never the cursor's own field,
+ *  whose live control owns its value (and, in a text blank, the caret). */
+function paintOpenStates() {
+  fieldNodes().forEach(function (n) {
+    if (n.dataset.key === ui.focusKey) return;
+    const f = n._f;
+    const st = fieldState(f);
+    n.className = "ws-field ws-" + st;
+    n.innerHTML = "";
+    fieldSummary(n, f, st);
   });
-  return wrap;
 }
 
-/**
- * Parts flow into a host. At TOP level they are grouped into sentence clauses; nested parts
- * (inside a group, or inside an option's own detail) flow inline within their parent clause.
- */
-function partsNodes(parts, line, ctx, host, nested) {
-  if (nested) {
-    (parts || []).forEach(function (p) { partNode(p, line, ctx, host); });
-    return;
-  }
-  clauseFlow(parts, line, ctx, host);
+/* ---- controls ---- */
+
+/** No hint is ever clipped: a blank is at least as wide as the placeholder it carries. */
+function hintChars(hint) { return String(hint || "").length + 2; }
+function fitWidth(base, hint) {
+  return "min(100%, max(" + base + ", " + hintChars(hint) + "ch))";
 }
 
-/** One part rendered into a host — the leaf renderer, no clause logic. */
-function partNode(p, line, ctx, host) {
-  if (typeof p === "string") { host.appendChild(litNode(p, ctx)); return; }
-  if (p.f) { host.appendChild(fillInput(p, line)); return; }
-  if (p.c) { choiceNodes(p, line, ctx, host); return; }
-  if (p.aox) { aoxNodes(p, line, ctx, host); return; }
-  if (p.g) {
-    const g = el("span", "grp");
-    partsNodes(p.g, line, ctx, g, true);
-    host.appendChild(g);
-  }
-}
-
-function litNode(text, ctx) {
-  const lit = el("span", "lit", replaceAllStr(text, UNIT_TOKEN, ctx.unit));
-  if (text.indexOf(UNIT_TOKEN) >= 0) lit.dataset.lit = text;   // re-substitutable on unit change
-  return lit;
-}
-
-/**
- * A clause is one sentence-level thought. It shares a row where it fits, takes a fresh row where
- * it does not, and wraps internally at word boundaries when it is longer than a row — but it is
- * never broken mid-thought.
- */
-function clauseFlow(parts, line, ctx, host) {
-  let clause = null;
-  let keep = false;                            // a whitespace-only clause is never emitted
-  function open() {
-    if (!clause) { clause = el("span", "clause"); keep = false; }
-    return clause;
-  }
-  function close() {
-    if (clause && keep) {
-      const full = clause.querySelectorAll(".fld-full");
-      if (full.length) {
-        clause.classList.add("clause-fill");
-        full.forEach(function (f) {          // a group between clause and blank must stretch too
-          let n = f.parentNode;
-          while (n && n !== clause) { n.classList.add("fill-host"); n = n.parentNode; }
-        });
-      }
-      host.appendChild(clause);
-    }
-    clause = null; keep = false;
-  }
-  (parts || []).forEach(function (p) {
-    if (typeof p === "string") {
-      sentencePieces(p).forEach(function (piece, i) {
-        if (i > 0) close();                    // the piece before this one carried a sentence end
-        if (piece === "") return;
-        const c = open();
-        // Punctuation rides inside the thought it closes, so it can never wrap onto a row alone.
-        if (PUNCT_ONLY.test(piece)) { gluePunct(punctHost(c, host), litNode(piece, ctx)); return; }
-        const lead = piece.match(/^[.,;:?!]+/);
-        if (lead && (c.lastElementChild || host.lastElementChild)) {
-          gluePunct(punctHost(c, host), litNode(lead[0], ctx));
-          piece = piece.slice(lead[0].length);
-          if (piece === "") return;
-        }
-        c.appendChild(litNode(piece, ctx));
-        if (piece.trim() !== "") keep = true;
-      });
-      return;
-    }
-    if (p.g) {                                 // an optional whole fragment starts clean
-      close();
-      partNode(p, line, ctx, open());
-      keep = true;
-      close();
-      return;
-    }
-    partNode(p, line, ctx, open());
-    keep = true;
-  });
-  close();
-}
-
-/** Appends punctuation so no row break can separate it from what precedes it: atomic hosts take
- *  it directly; inline containers get their tail wrapped in a no-break span alongside it. */
-function gluePunct(target, lit) {
-  const cs = target.classList;
-  if (cs && (cs.contains("fld") || cs.contains("clause"))) { target.appendChild(lit); return; }
-  const tail = target.lastElementChild;
-  if (!tail) { target.appendChild(lit); return; }
-  const glue = el("span", "glue");
-  target.replaceChild(glue, tail);
-  glue.appendChild(tail);
-  glue.appendChild(lit);
-}
-
-/** Where a punctuation mark goes: inside the control it closes, or failing that inside the clause
- *  just emitted. Never a standalone box that a row break could strand. */
-function punctHost(clause, host) {
-  const here = clause.lastElementChild;
-  if (here) return here.tagName === "SPAN" ? here : clause;
-  const prev = host.lastElementChild;                 // the clause closed just before this one
-  if (!prev || !prev.classList.contains("clause")) return clause;
-  const tail = prev.lastElementChild;
-  return tail && tail.tagName === "SPAN" ? tail : prev;
-}
-
-/** Splits a literal at sentence ends. The terminator and the whitespace after it stay with the
- *  sentence they close, so nothing dangles onto the next row. */
-const SENTENCE_END = /[.?!]\s+/g;
-const PUNCT_ONLY = /^[.,;:?!]+\s*$/;
-function sentencePieces(text) {
-  const out = [];
-  let start = 0, m;
-  SENTENCE_END.lastIndex = 0;
-  while ((m = SENTENCE_END.exec(text)) !== null) {
-    out.push(text.slice(start, SENTENCE_END.lastIndex));
-    start = SENTENCE_END.lastIndex;
-  }
-  out.push(text.slice(start));
-  return out;
-}
-
-function fillInput(p, line) {
-  const wrap = el("span", "fld");
-  const isHosp = p.w === "hospital";
+function textControl(n, box, f) {
+  const p = f.p || { f: f.id };
+  const def = defaultFor(f.id, draft());
   const input = document.createElement("input");
   input.type = "text";
-  input.dataset.field = p.f;
-  input.dataset.line = line.id;
-  if (p.hint) { input.placeholder = p.hint; input.title = p.hint; }
-  if (p.req) input.classList.add("req");
-  const v = val(p.f);
+  input.dataset.field = f.id;
+  input.dataset.line = f.line.id;
+  input.tabIndex = 0;
+  // The cursor must show what ENTER would accept, so a proposal outranks the hint as
+  // placeholder text and the hint falls back to the tooltip.
+  const ph = def != null ? String(def) : (p.hint || "");
+  if (ph) input.placeholder = ph;
+  if (def != null) input.classList.add("proposal");
+  if (p.hint || ph) input.title = p.hint || ph;
+  const v = val(f.id);
   input.value = nonEmpty(v) ? String(v) : "";
+  const isHosp = p.w === "hospital";
   if (isHosp) {
-    const listId = "dl_" + p.f;
+    const listId = "dl_" + f.id;
     input.setAttribute("list", listId);
     const dl = document.createElement("datalist");
     dl.id = listId;
     HOSPITALS.forEach(function (h) { dl.appendChild(new Option(h, h)); });
-    wrap.appendChild(dl);
+    box.appendChild(dl);
   }
-  const base = isHosp ? W_MAP[16] : (W_MAP[p.w] || W_MAP[8]);
-  if (base === "100%" || hintChars(p.hint) > FULL_HINT_CH) {
-    wrap.classList.add("fld-full");      // takes its clause row rather than overflowing the pane
-    wrap.style.flexBasis = "min(100%, " + hintChars(p.hint) + "ch)";   // a long hint claims a row
-    input.style.width = "100%";
-  } else {
-    input.style.width = fitWidth(base, p.hint);
-  }
+  input.style.width = fitWidth(isHosp ? W_MAP[16] : (W_MAP[p.w] || W_MAP[8]),
+    hintChars(p.hint) > hintChars(ph) ? p.hint : ph);   // room for whichever runs longer
   if (isTimeField(p)) {
     input.classList.add("time");
     input.inputMode = "numeric";
     input.setAttribute("pattern", "\\d{4}");
     input.maxLength = 4;
+    markTime(input);
   }
   input.addEventListener("input", function () {
-    setValue(p.f, input.value);
+    setValue(f.id, input.value);
     if (input.classList.contains("time")) markTime(input);
   });
-  if (input.classList.contains("time")) markTime(input);
-  wrap.appendChild(input);
-  return wrap;
+  box.appendChild(input);
+  n._accept = function () {
+    if (!nonEmpty(input.value) && def != null) {
+      input.value = String(def);
+      setValue(f.id, String(def));
+    }
+    return { rebuild: false };
+  };
 }
 
-/** A blank whose hint outruns the widest fixed bucket (18em ≈ 36ch) is really a full-width
- *  blank — it takes its clause row instead of overflowing the pane. */
-const FULL_HINT_CH = 36;
-function hintChars(hint) { return String(hint || "").length + 2; }
+/**
+ * The one option-row builder: roving tabindex + aria-checked over radios (single) or
+ * checkboxes (multi). The highlight opens on the current pick, else on the proposal.
+ * @param {Array<{v:string,t:string,on:boolean,prop:boolean=}>} list
+ */
+function optionRow(n, box, list, multi, pick) {
+  const grp = el("span", "ws-opts");
+  grp.setAttribute("role", multi ? "group" : "radiogroup");
+  list.forEach(function (o) {
+    const b = el("button", (multi ? "chip" : "pill") + (o.on ? " on" : "") +
+      (o.prop && !o.on ? " prop" : ""), o.t);
+    b.type = "button";
+    b.tabIndex = -1;
+    b.dataset.opt = o.v;
+    b.setAttribute("role", multi ? "checkbox" : "radio");
+    b.setAttribute("aria-checked", o.on ? "true" : "false");
+    b.addEventListener("click", function () { pick(o.v); });
+    grp.appendChild(b);
+  });
+  box.appendChild(grp);
+  n._opts = grp; n._multi = multi; n._pick = pick;
+  let hl = list.findIndex(function (o) { return o.on; });
+  if (hl < 0) hl = list.findIndex(function (o) { return o.prop; });
+  setHighlight(n, hl < 0 ? 0 : hl);
+}
+function setHighlight(n, i) {
+  const btns = n._opts && n._opts.children;
+  if (!btns || !btns.length) return;
+  i = (i % btns.length + btns.length) % btns.length;
+  Array.prototype.forEach.call(btns, function (b, j) {
+    b.tabIndex = j === i ? 0 : -1;
+    b.classList.toggle("hl", j === i);
+  });
+  n._hl = i;
+}
+function highlighted(n) {
+  const b = n._opts && n._opts.children[n._hl];
+  return b ? b.dataset.opt : null;
+}
 
-/** No hint is ever clipped: a blank is at least as wide as the placeholder it carries. */
-function fitWidth(base, hint) {
-  return "max(" + base + ", " + hintChars(hint) + "ch)";
+function choiceControl(n, box, f, ctx) {
+  const p = f.p, d = ctx.d, multi = !!p.multi;
+  const sel = d.values[p.id];
+  const picked = multi ? (Array.isArray(sel) ? sel : []) : (nonEmpty(sel) ? [sel] : []);
+  const def = defaultFor(p.id, d);
+  const defs = def == null ? [] : (Array.isArray(def) ? def : [def]);
+  const labels = (p.c || []).map(optLabel);
+  // A signed-off default that is not one of the options rides the other… path
+  // (card_dys_symptom_status): it shows as its own pill and writes through __other.
+  const freeDef = p.other ? defs.filter(function (x) { return labels.indexOf(x) < 0; })[0] : null;
+  const list = [];
+  if (freeDef) list.push({ v: freeDef, t: freeDef, on: false, prop: true });
+  labels.forEach(function (o) {
+    list.push({ v: o, t: o, on: picked.indexOf(o) >= 0, prop: defs.indexOf(o) >= 0 });
+  });
+  if (p.other) list.push({ v: OTHER, t: "other…", on: picked.indexOf(OTHER) >= 0 });
+  const writeFree = function () { d.values[p.id] = OTHER; d.values[p.id + "__other"] = freeDef; };
+  const write = function (v) {
+    if (freeDef && v === freeDef) { writeFree(); return; }
+    if (multi) {
+      const next = picked.slice();
+      const i = next.indexOf(v);
+      if (i >= 0) next.splice(i, 1); else next.push(v);
+      setValue(p.id, next);
+    } else setValue(p.id, picked.indexOf(v) >= 0 ? "" : v);
+  };
+  optionRow(n, box, list, multi, function (v) { write(v); structuralEdit(); });
+  n._other = !!p.other;
+  n._accept = function () {
+    const v = highlighted(n);
+    if (multi) {
+      if (picked.length) return { rebuild: false };
+      if (defs.length) { setValue(p.id, defs.slice()); return { rebuild: true }; }
+      if (v != null) { setValue(p.id, [v]); return { rebuild: true }; }
+      return { rebuild: false };
+    }
+    if (v == null) return { rebuild: false };
+    if (freeDef && v === freeDef) { writeFree(); return { rebuild: true }; }
+    setValue(p.id, v);
+    return { rebuild: true };
+  };
+}
+
+function triControl(n, box, f, ctx) {
+  const line = f.line;
+  const m = triMode(line.id), settled = triSettled(line.id);
+  const set = function (v) {
+    if (v === "omit") { delete ctx.d.values["__tri__" + line.id]; setAttested(line.id, true); }
+    else { setTriMode(line.id, v); setAttested(line.id, false); }
+  };
+  optionRow(n, box, [
+    { v: "given", t: "given", on: settled && m === "given" },
+    { v: "withheld", t: withheldWord(line), on: settled && m === "withheld" },
+    { v: "omit", t: "omit", on: settled && m === "omit", prop: true }
+  ], false, function (v) { set(v); structuralEdit(); });
+  n._accept = function () {
+    const v = highlighted(n);
+    if (v) set(v);
+    return { rebuild: true };
+  };
+}
+
+function escControl(n, box, f, ctx) {
+  const line = f.line;
+  const fired = ctx.d.esc[line.id] === "fired", settled = escSettled(line.id);
+  const set = function (v) {
+    if (v === "fired") { askEscalate(line); return true; }
+    delete ctx.d.esc[line.id];
+    setAttested(line.id, true);
+    return false;
+  };
+  optionRow(n, box, [
+    { v: "normal", t: "not fired", on: settled && !fired, prop: true },
+    { v: "fired", t: "FIRED", on: fired }
+  ], false, function (v) { if (!set(v)) structuralEdit(); });
+  if (line.escalatesTo) box.appendChild(el("span", "ws-inline-note", line.escalatesTo));
+  n._accept = function () {
+    if (highlighted(n) === "fired") { set("fired"); return { hold: true }; }
+    set("normal");
+    return { rebuild: true };
+  };
+}
+
+function forkControl(n, box, f, ctx) {
+  const line = f.line, sel = forkSel(line.id), multi = !!line.multi;
+  const write = function (v) {
+    if (multi) {
+      const next = sel.slice();
+      const i = next.indexOf(v);
+      if (i >= 0) next.splice(i, 1); else next.push(v);
+      ctx.d.forks[line.id] = next;
+    } else ctx.d.forks[line.id] = sel.indexOf(v) >= 0 ? "" : v;
+  };
+  optionRow(n, box, (line.options || []).map(function (o) {
+    return { v: o.label, t: o.label, on: sel.indexOf(o.label) >= 0 };
+  }), multi, function (v) { write(v); structuralEdit(); });
+  n._accept = function () {
+    const v = highlighted(n);
+    if (v == null) return { rebuild: false };
+    if (multi) { if (!sel.length) ctx.d.forks[line.id] = [v]; }
+    else ctx.d.forks[line.id] = v;
+    return { rebuild: true };
+  };
+}
+
+function dispoControl(n, box, f, ctx) {
+  optionRow(n, box, (DOC.dispositions || []).map(function (dsp) {
+    return { v: dsp.id, t: dsp.name, on: ctx.d.disposition === dsp.id };
+  }), false, function (v) {
+    ctx.d.disposition = ctx.d.disposition === v ? null : v;
+    structuralEdit();
+  });
+  n._accept = function () {
+    const v = highlighted(n);
+    if (v == null) return { rebuild: false };
+    ctx.d.disposition = v;
+    return { rebuild: true };
+  };
+}
+
+/** Orientation: the four components, plus the ×4 shortcut its proposal stands for. */
+function aoxControl(n, box, f, ctx) {
+  const keys = aoxPicked(ctx.d.values, f.id).map(function (x) { return x.k; });
+  const write = function (next) {
+    setValue(f.id, AOX_KEYS.filter(function (k) { return next.indexOf(k) >= 0; }));
+    structuralEdit();
+  };
+  optionRow(n, box, AOX.map(function (x) {
+    return { v: x.k, t: x.t, on: keys.indexOf(x.k) >= 0, prop: true };
+  }), true, function (v) {
+    const next = keys.slice();
+    const i = next.indexOf(v);
+    if (i >= 0) next.splice(i, 1); else next.push(v);
+    write(next);
+  });
+  const all = el("button", "pill aox-all", "×4 all");
+  all.type = "button"; all.tabIndex = -1;
+  all.addEventListener("click", function () { write(AOX_KEYS.slice()); });
+  box.appendChild(all);
+  n._accept = function () {
+    if (keys.length) return { rebuild: false };
+    setValue(f.id, AOX_KEYS.slice());
+    return { rebuild: true };
+  };
+}
+
+function openControl(n, box, f) {
+  const b = el("button", "ws-openbtn", "+ add detail");
+  b.type = "button"; b.tabIndex = 0;
+  b.addEventListener("click", function () { ui.expanded[f.line.id] = true; structuralEdit(); });
+  box.appendChild(b);
+  n._accept = function () { ui.expanded[f.line.id] = true; return { rebuild: true }; };
+}
+
+/* ---- keyboard ---- */
+
+/**
+ * One roving cursor over FIELDS. Enter accepts and advances to the next open item;
+ * Tab steps without accepting and falls through at the ends; arrows move the cursor
+ * (up/down) or the highlighted option (left/right); Space toggles a chip.
+ */
+function onWorksheetKey(e) {
+  const n = e.target.closest ? e.target.closest(".ws-field") : null;
+  if (!n) return;
+  const k = e.key;
+  if (k === "Enter") { e.preventDefault(); acceptField(n); return; }
+  if (k === "Tab") { if (moveFocus(n, e.shiftKey ? -1 : 1)) e.preventDefault(); return; }
+  if (k === "ArrowDown") { e.preventDefault(); moveFocus(n, 1); return; }
+  if (k === "ArrowUp") { e.preventDefault(); moveFocus(n, -1); return; }
+  if ((k === "ArrowLeft" || k === "ArrowRight") && n._opts) {
+    e.preventDefault();
+    setHighlight(n, n._hl + (k === "ArrowRight" ? 1 : -1));
+    focusControl(n);
+    return;
+  }
+  if (k === " " && n._opts) {
+    e.preventDefault();
+    const v = highlighted(n);
+    if (v != null) n._pick(v);
+    return;
+  }
+  // typing on an other:true pill run is a free-text override
+  if (n._other && k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    typeOther(n, k);
+  }
+}
+function typeOther(n, ch) {
+  const f = n._f, d = draft();
+  if (f.p && f.p.multi) {
+    const cur = Array.isArray(d.values[f.id]) ? d.values[f.id].slice() : [];
+    if (cur.indexOf(OTHER) < 0) cur.push(OTHER);
+    d.values[f.id] = cur;
+  } else d.values[f.id] = OTHER;
+  d.values[f.id + "__other"] = ch;
+  ui.focusKey = fieldKey(f.line.id, f.id + "__other");
+  structuralEdit();
+  focusControl(nodeForKey(ui.focusKey), ch.length);
+}
+function moveFocus(n, dir) {
+  const all = fieldNodes();
+  const i = all.indexOf(n);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= all.length) return false;
+  focusFieldNode(all[j], true);
+  return true;
+}
+function acceptField(n) {
+  const key = n.dataset.key, f = n._f;
+  const res = (n._accept ? n._accept() : null) || {};
+  if (res.hold) return;                        // a modal owns the next step
+  if (res.rebuild) structuralEdit();
+  else { onFormEdit(); repaintField(key); }    // paintOpenStates skips the cursor's own field
+  if (f.type === "open") {
+    const first = document.querySelector('#worksheet .ws-row[data-line="' +
+      cssEsc(f.line.id) + '"] .ws-field');
+    focusFieldNode(first, true);
+    return;
+  }
+  advanceFrom(key);
+}
+/** Next open item after `key`; wraps once; past the last one the cursor leaves for Copy. */
+function advanceFrom(key) {
+  const all = fieldNodes();
+  const i = all.findIndex(function (n) { return n.dataset.key === key; });
+  for (let j = i + 1; j < all.length; j++) {
+    if (isUnresolved(all[j])) { focusFieldNode(all[j], true); return; }
+  }
+  const wrap = all.find(isUnresolved);
+  if (wrap) { focusFieldNode(wrap, true); return; }
+  const copy = document.getElementById("copy-btn");
+  if (copy) copy.focus();
 }
 
 /** Soft clock validation — red outline only, never blocks. */
@@ -1717,188 +2164,6 @@ function markTime(input) {
   input.classList.toggle("bad", bad);
 }
 
-function choiceNodes(p, line, ctx, host) {
-  const opts = (p.c || []).map(optLabel);
-  if (p.other) opts.push(OTHER);
-  const sel = ctx.d.values[p.id];
-  const picked = p.multi ? (Array.isArray(sel) ? sel : []) : (nonEmpty(sel) ? [sel] : []);
-  const labelOf = function (o) { return o === OTHER ? "other…" : o; };
-
-  if (p.multi) {
-    const row = el("span", "chips");
-    opts.forEach(function (o) {
-      const on = picked.indexOf(o) >= 0;
-      const b = el("button", "chip" + (on ? " on" : ""), labelOf(o));
-      b.type = "button";
-      b.setAttribute("aria-pressed", on ? "true" : "false");
-      b.dataset.field = p.id; b.dataset.line = line.id;
-      b.addEventListener("click", function () {
-        const next = picked.slice();
-        const i = next.indexOf(o);
-        if (i >= 0) next.splice(i, 1); else next.push(o);
-        setValue(p.id, next);
-        replaceLineNode(line.id);
-      });
-      row.appendChild(b);
-    });
-    host.appendChild(row);
-  } else if (opts.length > 4) {
-    const s = document.createElement("select");
-    s.dataset.field = p.id; s.dataset.line = line.id;
-    s.appendChild(new Option("—", ""));
-    opts.forEach(function (o) { s.appendChild(new Option(labelOf(o), o)); });
-    s.value = picked[0] || "";
-    s.addEventListener("change", function () { setValue(p.id, s.value); replaceLineNode(line.id); });
-    host.appendChild(s);
-  } else {
-    const row = el("span", "pills");
-    row.setAttribute("role", "radiogroup");
-    opts.forEach(function (o) {
-      const on = picked.indexOf(o) >= 0;
-      const b = el("button", "pill" + (on ? " on" : ""), labelOf(o));
-      b.type = "button";
-      b.setAttribute("role", "radio");
-      b.setAttribute("aria-checked", on ? "true" : "false");
-      b.dataset.field = p.id; b.dataset.line = line.id;
-      b.addEventListener("click", function () {
-        setValue(p.id, picked.indexOf(o) >= 0 ? "" : o);
-        replaceLineNode(line.id);
-      });
-      row.appendChild(b);
-    });
-    host.appendChild(row);
-  }
-
-  if (picked.indexOf(OTHER) >= 0) {
-    const other = document.createElement("input");
-    other.type = "text";
-    other.className = "other-input";
-    other.dataset.field = p.id + "__other";
-    other.dataset.line = line.id;
-    other.placeholder = "other…";
-    other.style.width = fitWidth(W_MAP[16], other.placeholder);
-    const ov = ctx.d.values[p.id + "__other"];
-    other.value = nonEmpty(ov) ? String(ov) : "";
-    other.addEventListener("input", function () { setValue(p.id + "__other", other.value); });
-    host.appendChild(other);
-  }
-  // Options that carry their own embedded blanks reveal them when selected.
-  (p.c || []).forEach(function (o) {
-    if (typeof o === "string" || !o.parts) return;
-    if (picked.indexOf(o.label) < 0) return;
-    const det = el("span", "opt-detail");
-    partsNodes(o.parts, line, ctx, det, true);
-    host.appendChild(det);
-  });
-}
-
-/** Orientation control: a live count, the four component pills, and an "all four" shortcut.
- *  The count is display only — it is derived, never typed. */
-function aoxNodes(p, line, ctx, host) {
-  const keys = aoxPicked(ctx.d.values, p.aox).map(function (x) { return x.k; });
-  const wrap = el("span", "aox");
-  wrap.appendChild(el("span", "aox-count", keys.length ? String(keys.length) : ""));
-  AOX.forEach(function (x) {
-    const on = keys.indexOf(x.k) >= 0;
-    const b = el("button", "pill" + (on ? " on" : ""), x.t);
-    b.type = "button";
-    b.setAttribute("aria-pressed", on ? "true" : "false");
-    b.dataset.field = p.aox; b.dataset.line = line.id;
-    b.addEventListener("click", function () {
-      const next = AOX.filter(function (y) {
-        return y.k === x.k ? !on : keys.indexOf(y.k) >= 0;
-      }).map(function (y) { return y.k; });
-      setValue(p.aox, next);
-      replaceLineNode(line.id);
-    });
-    wrap.appendChild(b);
-  });
-  const all = el("button", "pill aox-all", "×4 all");
-  all.type = "button";
-  all.dataset.line = line.id;
-  all.addEventListener("click", function () {
-    setValue(p.aox, AOX.map(function (x) { return x.k; }));
-    replaceLineNode(line.id);
-  });
-  wrap.appendChild(all);
-  host.appendChild(wrap);
-}
-
-function renderDisposition(ctx) {
-  const card = document.getElementById("disposition-card");
-  card.innerHTML = "";
-  card.hidden = ctx.doaActive;                    // DOA replaces the disposition (doc §14)
-  if (ctx.doaActive) return;
-  card.dataset.section = "disposition";
-  const head = el("div", "card-head");
-  head.appendChild(el("h2", "card-title", "Disposition"));
-  card.appendChild(head);
-  const body = el("div", "card-body");
-  const row = el("div", "disp-row");
-  row.setAttribute("role", "radiogroup");
-  (DOC.dispositions || []).forEach(function (dsp) {
-    const on = ctx.d.disposition === dsp.id;
-    const b = el("button", "disp-pill" + (on ? " on" : ""), dsp.name);
-    b.type = "button";
-    b.setAttribute("role", "radio");
-    b.setAttribute("aria-checked", on ? "true" : "false");
-    b.addEventListener("click", function () {
-      ctx.d.disposition = on ? null : dsp.id;
-      structuralEdit();
-    });
-    row.appendChild(b);
-  });
-  body.appendChild(row);
-  card.appendChild(body);
-
-  const dsp = (DOC.dispositions || []).find(function (x) { return x.id === ctx.d.disposition; });
-  if (!dsp) return;
-  const holder = cardShell("disp_" + dsp.id, dsp.name);
-  fillCardLines(holder, dsp.lines, ctx);
-  body.appendChild(holder._body);
-}
-
-/** Move cond lines between the section body and its "+ add detail" expander in place. */
-function syncCondPlacement() {
-  const ctx = context();
-  document.querySelectorAll("#form-pane .section-card").forEach(function (card) {
-    const lines = card.querySelector(":scope > .card-body > .lines");
-    const exp = card.querySelector(":scope > .card-body > .expander > .expander-body");
-    const wrap = card.querySelector(":scope > .card-body > .expander");
-    if (!lines || !exp) return;
-    const nodes = [].concat(
-      Array.prototype.slice.call(lines.children),
-      Array.prototype.slice.call(exp.children));
-    nodes.forEach(function (node) {
-      if (!node.dataset || !node.dataset.line) return;
-      const rec = LINE_INDEX[node.dataset.line];
-      if (!rec) return;
-      const line = rec.line;
-      if (!line.cond && !line.opt) return;
-      const touched = lineTouched(line, ctx.d);
-      const shown = touched || (line.cond ? !!ctx.cond[line.cond] : false);
-      const want = shown ? lines : exp;
-      if (node.parentNode !== want) insertOrdered(want, node);
-    });
-    if (wrap) wrap.hidden = exp.children.length === 0;
-  });
-}
-/** Re-substitute the unit token in already-rendered literal spans. */
-function repaintUnitLiterals() {
-  const unit = draft().unit || "";
-  document.querySelectorAll("#form-pane .lit[data-lit]").forEach(function (n) {
-    n.textContent = replaceAllStr(n.dataset.lit, UNIT_TOKEN, unit);
-  });
-}
-
-function insertOrdered(container, node) {
-  const idx = +(node.dataset.idx || 0);
-  const before = Array.prototype.slice.call(container.children).find(function (k) {
-    return +(k.dataset.idx || 0) > idx;
-  });
-  container.insertBefore(node, before || null);
-}
-
 /* ============================ value plumbing ============================ */
 
 function setValue(id, v) {
@@ -1909,11 +2174,20 @@ function setValue(id, v) {
   onFormEdit();
 }
 
-/** Called after a VALUE change: no form rebuild (caret/focus preserved). */
+/**
+ * Called after a VALUE change. The assembly always re-runs — the worksheet's field
+ * states come from it — but the worksheet itself is only rebuilt when the change
+ * moved a row in or out; otherwise summaries are repainted around the live control,
+ * so a caret in a text blank survives typing.
+ */
 function onFormEdit() {
-  syncCondPlacement();
-  if (draft().polish) { warnPolish(); scheduleSave(); return; }
-  renderPreview();
+  if (draft().polish) {
+    lastAsm = assemble(context());
+    buildOpenIndex(lastAsm);
+    warnPolish();
+  } else renderPreview();
+  if (condSignature(context()) !== ui.condSig) renderWorksheet();
+  else paintOpenStates();
   scheduleSave();
 }
 
@@ -1931,6 +2205,7 @@ function renderPreview() {
   const ctx = context();
   const asm = assemble(ctx);
   lastAsm = asm;
+  buildOpenIndex(asm);
   const pv = document.getElementById("preview");
   const d = draft();
 
@@ -1946,8 +2221,10 @@ function renderPreview() {
     pv.innerHTML = assemblyHtml(asm);
   }
   pv.dataset.draftId = d.id;
+  markPreviewFocus();
   updateCounter(currentText());
-  renderMissing(asm.missing);
+  paintMissingBadge();
+  disarmCopy();
   document.getElementById("polish-banner").hidden = !d.polish;
   const toggleBtn = document.getElementById("polish-toggle");
   toggleBtn.textContent = d.polish ? "Exit polish" : "Polish";
@@ -1984,7 +2261,15 @@ function countBlanks(text) {
   return m ? m.length : 0;
 }
 
-/** Repaint #missing-badge: text-derived while polishing, form-derived otherwise. */
+/** Open items split by kind: AMBER blanks to fill, PROPOSED defaults to confirm. */
+function openCounts() {
+  const m = (lastAsm && lastAsm.missing) || [];
+  let missing = 0, proposed = 0;
+  m.forEach(function (x) { if (x.kind === "proposed") proposed++; else missing++; });
+  return { missing: missing, proposed: proposed, open: missing + proposed };
+}
+
+/** Repaint #missing-badge: text-derived while polishing, worksheet-derived otherwise. */
 function paintMissingBadge() {
   const badge = document.getElementById("missing-badge");
   const d = draft();
@@ -1993,71 +2278,25 @@ function paintMissingBadge() {
     badge.hidden = n === 0;
     badge.textContent = n + " ___ in text";
   } else {
-    const n = (lastAsm && lastAsm.missing.length) || 0;
+    const n = openCounts().open;
     badge.hidden = n === 0;
-    badge.textContent = n + " missing";
+    badge.textContent = n + " open";
   }
 }
 
-/** Recompute the "+N more below" footer against #missing-list's current scroll position. */
-function updateMissingOverflow() {
-  const list = document.getElementById("missing-list");
-  const more = list ? list.querySelector(".ml-more") : null;
-  if (!list || !more) return;
-  const rows = list.querySelectorAll(".ml-row");
-  const limit = list.scrollTop + list.clientHeight;
-  let n = 0;
-  rows.forEach(function (r) { if (r.offsetTop >= limit) n++; });
-  more.hidden = n === 0;
-  more.textContent = "+" + n + " more below";
-}
-
-function renderMissing(missing) {
-  const list = document.getElementById("missing-list");
-  const d = draft();
-  const n = missing.length;
-  paintMissingBadge();
-  list.innerHTML = "";
-  list.hidden = n === 0;
-  list.classList.toggle("polishing", !!d.polish);
-  if (d.polish && n !== 0) {
-    list.appendChild(el("div", "ml-polish-note", "Form fields still empty — not in the copied text"));
-  }
-  const groups = [];
-  missing.forEach(function (m) {
-    let g = groups.find(function (x) { return x.id === m.sectionId; });
-    if (!g) { g = { id: m.sectionId, name: m.sectionName, rows: [] }; groups.push(g); }
-    g.rows.push(m);
-  });
-  groups.forEach(function (g) {
-    const box = el("div", "ml-group");
-    box.appendChild(el("div", "ml-head", g.name || g.id));
-    let prevLineId = null;
-    g.rows.forEach(function (m) {
-      const b = el("button", "ml-row");
-      b.type = "button";
-      b.dataset.field = m.fieldId;
-      b.appendChild(el("span", "ml-line", m.lineId === prevLineId ? "" : m.lineLabel));
-      b.appendChild(el("span", "ml-field", "— " + m.fieldLabel));
-      prevLineId = m.lineId;
-      b.addEventListener("click", function () { jumpToField(m.fieldId, m.lineId); });
-      box.appendChild(b);
-    });
-    list.appendChild(box);
-  });
-  list.appendChild(el("div", "ml-more"));
-  requestAnimationFrame(function () { updateMissingOverflow(); });
-  disarmCopy();
-}
-
-/** Copy button resting label: base "Copy", draft suffix (2+ drafts), missing-count suffix. */
+/** Copy button resting label: base "Copy", draft suffix (2+ drafts), open-count suffix. */
 function paintCopyLabel() {
   const copy = document.getElementById("copy-btn");
   const d = draft();
-  const n = d.polish ? countBlanks(d.polish.text) : ((lastAsm && lastAsm.missing.length) || 0);
   let label = "Copy";
   if (state.drafts.length >= 2) label += " — " + d.label;
-  if (n > 0) label += " (" + n + " ___)";
+  if (d.polish) {
+    const n = countBlanks(d.polish.text);
+    if (n > 0) label += " (" + n + " ___)";
+  } else {
+    const n = openCounts().open;
+    if (n > 0) label += " (" + n + " open)";
+  }
   copy.textContent = label;
 }
 
@@ -2068,57 +2307,18 @@ function disarmCopy() {
   paintCopyLabel();
 }
 
-/* ---- click-to-jump (both directions) ---- */
+/* ---- click-to-jump (prose → worksheet) ---- */
 
-function revealAncestors(node) {
-  let p = node;
-  while (p && p !== document.body) {
-    if (p.classList && p.classList.contains("expander-body") && p.hidden) {
-      p.hidden = false;
-      const card = p.closest(".section-card");
-      if (card && card.dataset.section) ui.expanders[card.dataset.section] = true;
-    }
-    if (p.hidden) p.hidden = false;
-    p = p.parentNode;
-  }
-}
-let focusMarkToken = 0;
-function focusNode(node) {
-  if (!node) return;
-  const prevTarget = document.querySelector(".line.target");
-  if (prevTarget) prevTarget.classList.remove("target");
-  revealAncestors(node);
-  const instant = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  node.scrollIntoView({ block: "center", behavior: instant ? "auto" : "smooth" });
-  if (typeof node.focus === "function") node.focus({ preventScroll: true });
-  const line = node.closest ? node.closest(".line") : null;
-  if (!line) return;
-  const token = ++focusMarkToken;
-  const mark = function () {
-    if (token !== focusMarkToken) return;
-    line.classList.add("target");
-  };
-  if (instant) { mark(); return; }
-  let settled = false;
-  const finish = function () {
-    if (settled) return;
-    settled = true;
-    mark();
-  };
-  window.addEventListener("scrollend", finish, { once: true });
-  setTimeout(finish, 600);
+function firstFieldOfLine(lineId) {
+  return document.querySelector('#worksheet .ws-row[data-line="' + cssEsc(lineId) + '"] .ws-field');
 }
 function jumpToField(fieldId, lineId) {
-  let n = document.querySelector('#form-pane [data-field="' + cssEsc(fieldId) + '"]');
-  if (!n && lineId) n = firstInputOfLine(lineId);
-  focusNode(n);
+  let n = lineId ? nodeForKey(fieldKey(lineId, fieldId)) : null;
+  if (!n) n = document.querySelector('#worksheet .ws-field[data-field="' + cssEsc(fieldId) + '"]');
+  if (!n && lineId) n = firstFieldOfLine(lineId);
+  focusFieldNode(n, true);
 }
-function firstInputOfLine(lineId) {
-  const line = document.querySelector('#form-pane .line[data-line="' + cssEsc(lineId) + '"]');
-  if (!line) return null;
-  return line.querySelector("input, select, button, [contenteditable]") || line;
-}
-function jumpToLine(lineId) { focusNode(firstInputOfLine(lineId)); }
+function jumpToLine(lineId) { focusFieldNode(firstFieldOfLine(lineId), true); }
 
 /* ============================ structural actions ============================ */
 
@@ -2255,7 +2455,7 @@ function doEscalate(line, target) {
 
 /* ---- OB infant hand-off ---- */
 
-function maybeHandoffButton(card, owner, ctx) {
+function maybeHandoffButton(host, owner, ctx) {
   const h = owner.handoff;
   if (!h) return;
   if (h.whenFork) {
@@ -2265,7 +2465,7 @@ function maybeHandoffButton(card, owner, ctx) {
   const b = el("button", "handoff-btn", h.buttonLabel || "Start second narrative");
   b.type = "button";
   b.addEventListener("click", function () { startHandoff(owner); });
-  card._lines.appendChild(b);
+  host.appendChild(b);
 }
 
 /** Create a second draft carrying the declared values. Source draft untouched. */
@@ -2343,23 +2543,20 @@ function warnPolish() {
 
 /* ============================ copy ============================ */
 
+/** The gate is clear only when nothing is left to fill AND nothing is left to confirm. */
 function doCopy() {
   const btn = document.getElementById("copy-btn");
-  const missingN = (lastAsm && lastAsm.missing.length) || 0;
-  const missingActive = missingN > 0 && !draft().polish;
+  const c = openCounts();
+  const openActive = c.open > 0 && !draft().polish;
   const over = charCount(currentText()) - CHAR_RED;
   const overActive = over > 0;
-  if ((missingActive || overActive) && !ui.copyPending) {
+  if ((openActive || overActive) && !ui.copyPending) {
     ui.copyPending = true;
-    let label;
-    if (missingActive && overActive) {
-      label = missingN + " ___, " + over.toLocaleString("en-US") + " over cap — copy anyway?";
-    } else if (overActive) {
-      label = over.toLocaleString("en-US") + " over cap — copy anyway?";
-    } else {
-      label = "Copy with " + missingN + " unfilled ___?";
-    }
-    btn.textContent = label;
+    const bits = [];
+    if (openActive && c.missing) bits.push(c.missing + " to fill");
+    if (openActive && c.proposed) bits.push(c.proposed + " to confirm");
+    if (overActive) bits.push(over.toLocaleString("en-US") + " over cap");
+    btn.textContent = bits.join(" · ") + " — press again to copy anyway";
     btn.classList.add("confirming");
     return;
   }
@@ -2481,6 +2678,7 @@ function restore() {
       const base = makeDraft(d.label, d.unit);
       const m = Object.assign(base, d, {
         values: d.values || {}, forks: d.forks || {}, esc: d.esc || {},
+        attested: d.attested || {},          // drafts saved before attestations existed
         naSections: d.naSections || {}, subs: d.subs || {}, blockIds: d.blockIds || []
       });
       // Migrate pre-owner-stack drafts: the old activeTemplate / activeAddendum pair
@@ -2512,7 +2710,7 @@ function newCall() {
       { label: "New call", cls: "danger", onClick: function () {
           try { sessionStorage.removeItem(SS_KEY); } catch (e) { /* noop */ }
           state = { drafts: [makeDraft("Call")], activeDraft: 0 };
-          ui.expanders = {}; ui.polishWarned = false; ui.copyPending = false;
+          ui.expanded = {}; ui.polishWarned = false; ui.copyPending = false; ui.focusKey = null;
           const cs = document.getElementById("category-select");
           cs.value = "";
           const pv = document.getElementById("preview");
@@ -2560,11 +2758,10 @@ function wire() {
   us.addEventListener("change", function () {
     if (us.value === OTHER) { uo.hidden = false; draft().unit = uo.value || ""; uo.focus(); }
     else { uo.hidden = true; draft().unit = us.value; }
-    renderForm(); onFormEdit();
+    onFormEdit();
   });
   uo.addEventListener("input", function () {
-    draft().unit = uo.value;
-    repaintUnitLiterals();          // targeted: never rebuild the form while typing here
+    draft().unit = uo.value;        // the unit token only ever reaches the prose
     renderPreview(); scheduleSave();
   });
   document.getElementById("category-select").addEventListener("change", function (e) {
@@ -2584,7 +2781,7 @@ function wire() {
   const pv = document.getElementById("preview");
   pv.addEventListener("click", function (e) {
     if (draft().polish) return;                 // polishing: clicks edit text, not jump
-    const blank = e.target.closest ? e.target.closest(".pv-blank") : null;
+    const blank = e.target.closest ? e.target.closest(".pv-blank, .pv-proposed") : null;
     if (blank && blank.dataset.field) {
       const blankLine = blank.closest(".pv-line");
       jumpToField(blank.dataset.field, blankLine ? blankLine.dataset.line : null);
@@ -2603,10 +2800,16 @@ function wire() {
     disarmCopy();
     scheduleSave();
   });
-  document.getElementById("missing-list").addEventListener("scroll", updateMissingOverflow);
-  document.getElementById("form-pane").addEventListener("input", function (e) {
-    const marked = e.target.closest ? e.target.closest(".line.target") : null;
-    if (marked) marked.classList.remove("target");
+  const ws = document.getElementById("worksheet");
+  ws.addEventListener("keydown", onWorksheetKey);
+  ws.addEventListener("click", function (e) {
+    // a click inside the cursor's own field belongs to its control, not to focus
+    const n = e.target.closest ? e.target.closest(".ws-field") : null;
+    if (n) { if (n.dataset.key !== ui.focusKey) focusFieldNode(n, false); return; }
+    const row = e.target.closest ? e.target.closest(".ws-row") : null;
+    if (!row) return;
+    const first = row.querySelector(".ws-field");
+    if (first && first.dataset.key !== ui.focusKey) focusFieldNode(first, false);
   });
 }
 
