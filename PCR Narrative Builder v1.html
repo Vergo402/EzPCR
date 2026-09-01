@@ -199,6 +199,54 @@ button:active { background: var(--tint); }
 input.time { font-variant-numeric: tabular-nums; }
 input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var(--red-text) inset; }
 
+/* ---- ordering: drag handles, paragraph badges ---- */
+/* piece 4 wires the drag itself; this only reserves the geometry and paints the
+   badge, so a pristine draft is unchanged but for the gutter and the pill. */
+.ws-line { display: flex; align-items: flex-start; gap: 6px; }
+.ws-line-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.ws-line.ws-loose { padding: 2px 0; }
+
+.ws-handle {
+  flex-shrink: 0; width: 20px; height: 27px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: transparent; cursor: grab; padding: 0;
+  opacity: 0; transition: opacity .12s ease;
+}
+.ws-line > .ws-handle { margin-top: 5px; }
+.ws-line:hover > .ws-handle, .ws-handle:focus-visible, .ws-sec:hover > .ws-sechead .ws-handle { opacity: 1; }
+@media (hover: none) { .ws-handle { opacity: 1; } }
+.ws-dots {
+  width: 10px; height: 15px; color: var(--text-faint);
+  background-image: radial-gradient(circle, currentColor 1.2px, transparent 1.3px);
+  background-size: 5px 5px;
+}
+
+/* base pill styling is shared by the per-line badge and the box's own badge (which
+   lives in its sechead, not a .ws-line); only the .ws-line context also pins it to
+   the top of the unit, aligned with the first row */
+.ws-para {
+  flex-shrink: 0; font-size: 10.5px; color: var(--text-faint);
+  border: 1px solid var(--border); border-radius: 999px; padding: 0 6px;
+}
+.ws-line > .ws-para { align-self: flex-start; margin-top: 5px; }
+.ws-para-moved { color: var(--amber-text); border-color: var(--amber-text); }
+
+/* a box's sechead is the only one that ever carries data-unit (shell and disposition
+   heads never do), so scoping the layout fix to that attribute keeps every other
+   sechead's default space-between untouched by construction rather than by reasoning */
+.ws-sec[data-unit] > .ws-sechead { justify-content: flex-start; }
+.ws-sec[data-unit] > .ws-sechead > .ws-sectools { margin-left: auto; }
+
+/* drag-state hooks: defined now, unused until piece 4 wires the events that toggle them */
+.ws-line.ws-lifted, .ws-sec.ws-lifted {
+  position: absolute; z-index: 40; background: var(--sheet);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  box-shadow: 0 6px 16px rgba(60,50,30,.18);
+}
+.ws-drop-slot { border: 1px dashed var(--text-faint); border-radius: var(--radius-sm); background: var(--tint); }
+body.ws-dragging { user-select: none; -webkit-user-select: none; }
+
 /* ---- pills + chips (worksheet controls and the escalation modal) ---- */
 .pill, .chip { height: 25px; padding: 0 11px; font-size: 12px; border-radius: 999px; vertical-align: baseline; }
 .pill.on, .chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 500; }
@@ -283,6 +331,7 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
       <div id="add-block-popup" hidden></div>
     </div>
     <div id="draft-switcher" hidden></div>
+    <button id="reset-order" type="button" hidden>Reset order</button>
     <button id="new-call" type="button">New call</button>
   </div>
 </header>
@@ -862,7 +911,7 @@ function effectiveTopOrder(ctx) {
 
 /**
  * The lines DOC puts in a region, in DOC's order — the same walk the worksheet and the
- * assembler make (ownerRows / ownerSections): a shell section's own top-level lines,
+ * assembler make (ownerBox / ownerSections): a shell section's own top-level lines,
  * the ACTIVE disposition's lines, or a box's active sub-block lines followed by its
  * block-level lines. Forks are not recursed into, because a fork is one unit. The
  * disposition picker is not a sentence and never appears here.
@@ -1868,6 +1917,7 @@ function renderTopbar() {
   const chip = document.getElementById("draft-chip");
   chip.hidden = state.drafts.length < 2;
   chip.textContent = d.label;
+  document.getElementById("reset-order").hidden = !orderCustomized();
   paintCopyLabel();
 }
 
@@ -1901,20 +1951,99 @@ function lineDeferred(line, ctx) {
   return line.cond ? !ctx.cond[line.cond] : true;
 }
 
+/**
+ * The paragraph a unit's BADGE shows: its own override, else — for a line owned by a
+ * block/template — its box's override, else its home. This is rowPara()'s own → box →
+ * fallback shape, read for a unit that has no assembled row to fall back to; the
+ * fallback here is homeParaOf() rather than an assembled row's stamped paragraph.
+ * Not resolvedParaOf(): that answers for one unit only and deliberately skips the box
+ * fallback (see its own docstring), which a line badge needs and an owner badge is
+ * unaffected by (an "owner:" key has no box of its own to inherit from either way).
+ * @param {string} unitKey @param {Object} d draft @returns {number} 1..PARA.count
+ */
+function unitBadgePara(unitKey, d) {
+  const overrides = (d && d.paraOverrides) || {};
+  const own = overrides[unitKey];
+  if (own) return own;
+  if (String(unitKey).indexOf("line:") === 0) {
+    const rec = LINE_INDEX[unitKey.slice(5)];
+    if (rec && (rec.ownerType === "block" || rec.ownerType === "template")) {
+      const box = overrides["owner:" + rec.ownerId];
+      if (box) return box;
+    }
+  }
+  return homeParaOf(unitKey);
+}
+
+/** The drag handle every orderable unit gets: a real button (keyboard-reachable),
+ *  hover/focus-revealed (see CSS), its dot grid drawn in CSS rather than an asset.
+ *  No click behavior yet — piece 4 wires the drag itself. */
+function makeHandle(label) {
+  const b = el("button", "ws-handle");
+  b.type = "button";
+  b.setAttribute("aria-label", label);
+  b.appendChild(el("span", "ws-dots"));
+  return b;
+}
+
+/** The "¶N" pill next to a unit: amber once the unit no longer answers to its home
+ *  paragraph, so a dragged sentence or box reads as moved at a glance. */
+function makeParaBadge(unitKey, d) {
+  const para = unitBadgePara(unitKey, d);
+  const cls = "ws-para" + (para !== homeParaOf(unitKey) ? " ws-para-moved" : "");
+  return el("span", cls, "¶" + para);
+}
+
+/**
+ * Wrap one draggable LINE unit: a handle in a left gutter, its rows — everything
+ * lineRow produces for it, including a fork's own .ws-sub — in the body, and a
+ * paragraph badge. Not used for boxes: a box's handle/badge live on its own
+ * .ws-sec/.ws-sechead instead (see ownerBox). Only builds DOM; piece 4 wires the drag.
+ * @param {Element} host @param {string} unitKey "line:<id>" @param {Object} ctx
+ * @param {string} [extraClass] e.g. "ws-loose" for a unit rendered with no section box
+ * @returns {Element} the body node — render the unit's rows into this
+ */
+function unitWrap(host, unitKey, ctx, extraClass) {
+  const wrap = el("div", "ws-line" + (extraClass ? " " + extraClass : ""));
+  wrap.dataset.unit = unitKey;
+  wrap.appendChild(makeHandle("Reorder sentence"));
+  const body = el("div", "ws-line-body");
+  wrap.appendChild(body);
+  wrap.appendChild(makeParaBadge(unitKey, ctx.d));
+  host.appendChild(wrap);
+  return body;
+}
+
+/**
+ * Walk the medic's arranged order top to bottom: a fixed shell section, the ONE owner
+ * box a "owner:" entry names, the disposition section, or a line dragged all the way to
+ * the top level with no section of its own. A pristine draft's effectiveTopOrder() is
+ * defaultTopOrder(), which mirrors this exactly (see ORDERING), so this reproduces the
+ * old fixed walk (shell sections → slot at anchor → disposition) byte-for-byte.
+ */
 function renderWorksheet() {
   const ctx = context();
   const ws = document.getElementById("worksheet");
   const hadFocus = ws.contains(document.activeElement);
   const caret = textCaret(document.activeElement);
   ws.innerHTML = "";
-  const anchor = slotAnchorId();
-  let slotPlaced = false;
-  ((DOC.shell && DOC.shell.sections) || []).forEach(function (s) {
-    shellSection(ws, s, ctx);
-    if (s.id === anchor) { ownerRows(ws, ctx); slotPlaced = true; }
+  const ownerByKey = Object.create(null);
+  ctx.owners.forEach(function (o) { ownerByKey["owner:" + o.owner.id] = o; });
+  effectiveTopOrder(ctx).forEach(function (key) {
+    if (key === "sec:disposition") {
+      if (!ctx.doaActive) dispositionSection(ws, ctx);
+    } else if (key.indexOf("sec:") === 0) {
+      const s = ((DOC.shell && DOC.shell.sections) || [])
+        .find(function (x) { return x.id === key.slice(4); });
+      if (s) shellSection(ws, s, ctx);
+    } else if (key.indexOf("owner:") === 0) {
+      const o = ownerByKey[key];
+      if (o) ownerBox(ws, o, ctx);
+    } else if (key.indexOf("line:") === 0) {
+      const rec = LINE_INDEX[key.slice(5)];
+      if (rec) lineRow(unitWrap(ws, key, ctx, "ws-loose"), rec.line, ctx);
+    }
   });
-  if (!slotPlaced) ownerRows(ws, ctx);
-  if (!ctx.doaActive) dispositionSection(ws, ctx);
   ui.condSig = condSignature(ctx);
   settleFocus();
   if (hadFocus) restoreWorksheetFocus(caret);
@@ -1957,45 +2086,78 @@ function shellSection(host, s, ctx) {
     if (d.naSections[s.id]) { sec.classList.add("ws-na"); sec._rows.inert = true; }
   }
   if (s.note) sec._rows.appendChild(el("div", "ws-note", s.note));
-  (s.lines || []).forEach(function (l) { lineRow(sec._rows, l, ctx); });
+  regionUnits("sec:" + s.id, ctx).forEach(function (key) {
+    const rec = LINE_INDEX[key.slice(5)];
+    if (rec) lineRow(unitWrap(sec._rows, key, ctx), rec.line, ctx);
+  });
 }
 
-/** One section per stacked owner, in add order — the assembler's order exactly. */
-function ownerRows(host, ctx) {
-  ctx.owners.forEach(function (o) {
-    const owner = o.owner, kind = o.kind;
-    const sec = sectionNode(host, kind + "_" + owner.id, owner.name);
-    const x = el("button", "rm-block", "×");
-    x.type = "button"; x.title = "remove " + kind;
-    x.addEventListener("click", function () { removeBlock(owner.id); });
-    sec._tools.appendChild(x);
-    if (owner.intro) sec._rows.appendChild(el("div", "ws-note", owner.intro));
-    if (owner.subBlocks && owner.subBlocks.length) {
-      const row = el("div", "sub-row");
-      const multi = owner.subBlocks.some(function (sb) { return sb.multi; });
-      owner.subBlocks.forEach(function (sb) {
-        const b = el("button", "sub-pill" + (subActive(owner, sb) ? " on" : ""), sb.name);
-        b.type = "button";
-        b.addEventListener("click", function () { toggleSub(owner, sb, multi); });
-        row.appendChild(b);
-      });
-      sec._rows.appendChild(row);
-    }
-    (owner.subBlocks || []).forEach(function (sb) {
-      if (!subActive(owner, sb)) return;
-      sec._rows.appendChild(el("div", "ws-subhead", sb.name));
-      (sb.lines || []).forEach(function (l) { lineRow(sec._rows, l, ctx); });
-    });
-    (owner.lines || []).forEach(function (l) { lineRow(sec._rows, l, ctx); });
-    if (owner.handoff) maybeHandoffButton(sec._rows, owner, ctx);
+/** lineId -> the sub-block that declares it, for one owner. Lets the box's line loop
+ *  know when to open a new .ws-subhead without re-scanning subBlocks per line. */
+function subBlockMap(owner) {
+  const map = Object.create(null);
+  (owner.subBlocks || []).forEach(function (sb) {
+    (sb.lines || []).forEach(function (l) { map[l.id] = sb; });
   });
+  return map;
+}
+
+/**
+ * One box for a single stacked owner (block or template): chrome (remove ×, intro
+ * note, sub-block pill row, handoff button) plus its lines in the medic's current
+ * order. The box is itself a draggable top-level unit — data-unit/handle/badge live
+ * on its .ws-sec/.ws-sechead, not inside a .ws-line (see unitWrap).
+ */
+function ownerBox(host, ownerRec, ctx) {
+  const owner = ownerRec.owner, kind = ownerRec.kind;
+  const unitKey = "owner:" + owner.id;
+  const sec = sectionNode(host, kind + "_" + owner.id, owner.name);
+  sec.dataset.unit = unitKey;
+  const head = sec.querySelector(".ws-sechead");
+  head.insertBefore(makeHandle("Reorder block"), head.firstChild);
+  sec._tools.appendChild(makeParaBadge(unitKey, ctx.d));
+  const x = el("button", "rm-block", "×");
+  x.type = "button"; x.title = "remove " + kind;
+  x.addEventListener("click", function () { removeBlock(owner.id); });
+  sec._tools.appendChild(x);
+  if (owner.intro) sec._rows.appendChild(el("div", "ws-note", owner.intro));
+  if (owner.subBlocks && owner.subBlocks.length) {
+    const row = el("div", "sub-row");
+    const multi = owner.subBlocks.some(function (sb) { return sb.multi; });
+    owner.subBlocks.forEach(function (sb) {
+      const b = el("button", "sub-pill" + (subActive(owner, sb) ? " on" : ""), sb.name);
+      b.type = "button";
+      b.addEventListener("click", function () { toggleSub(owner, sb, multi); });
+      row.appendChild(b);
+    });
+    sec._rows.appendChild(row);
+  }
+  // A subhead marks entry into a sub-block's run of lines and dedups across
+  // consecutive lines from the same one; owner.lines and any foreign line dragged
+  // in here have no sub-block, so they never open one (matches the old fixed walk).
+  const sbOf = subBlockMap(owner);
+  let prevSb;
+  regionUnits(unitKey, ctx).forEach(function (key) {
+    const id = key.slice(5);
+    const rec = LINE_INDEX[id];
+    if (!rec) return;
+    const sb = sbOf[id] || null;
+    if (sb !== prevSb) {
+      if (sb) sec._rows.appendChild(el("div", "ws-subhead", sb.name));
+      prevSb = sb;
+    }
+    lineRow(unitWrap(sec._rows, key, ctx), rec.line, ctx);
+  });
+  if (owner.handoff) maybeHandoffButton(sec._rows, owner, ctx);
 }
 
 function dispositionSection(host, ctx) {
   const sec = sectionNode(host, "disposition", "Disposition");
   lineRow(sec._rows, DISPO_LINE, ctx);
-  const dsp = (DOC.dispositions || []).find(function (x) { return x.id === ctx.d.disposition; });
-  if (dsp) (dsp.lines || []).forEach(function (l) { lineRow(sec._rows, l, ctx); });
+  regionUnits("sec:disposition", ctx).forEach(function (key) {
+    const rec = LINE_INDEX[key.slice(5)];
+    if (rec) lineRow(unitWrap(sec._rows, key, ctx), rec.line, ctx);
+  });
 }
 
 /* ---- rows and fields ---- */
@@ -3280,6 +3442,9 @@ function wire() {
     if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true;
   });
   document.getElementById("new-call").addEventListener("click", newCall);
+  document.getElementById("reset-order").addEventListener("click", function () {
+    resetOrder(); saveNow(); renderAll();
+  });
   document.getElementById("polish-toggle").addEventListener("click", togglePolish);
   document.getElementById("copy-btn").addEventListener("click", doCopy);
 
