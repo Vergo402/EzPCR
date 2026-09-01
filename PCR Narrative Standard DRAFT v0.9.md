@@ -1,14 +1,16 @@
-# PCR Narrative Standard, Draft v0.8
+# PCR Narrative Standard, Draft v0.9
 Cortlandt-Peekskill Regional Paramedic Services, emsCharts, NYS ALS Collaborative Protocols
 Author: A. Vergo. Status: working draft, aligned to NYS Collaborative Protocols v26.1 (eff. 9/1/26) and the National Field Triage Red/Yellow criteria. Shell, four dispositions, all 18 blocks, all 6 dedicated templates. Complete first full draft.
 
 Conventions
 - `___` = fill in. `[ ]` = pick one or delete. `{ }` = note to self, delete before saving.
+- A bracket followed by `{any that apply}` means the options combine (any subset), joined in prose as an Oxford list ("a and b" / "a, b, and c").
 - Routine data lives in the emsCharts activity log. The narrative restates only values that justify a decision.
 - Protocol names stay out. Cite only medical control contact and any deviation.
 - Every block ends with its escalation line. If it fires, stop the block and switch to the dedicated template.
 - Withheld treatments are written next to the drug they belong to, with the reason.
 - GCS appears only in the Neuro/AMS and Trauma blocks.
+- The finished narrative is four paragraphs: (1) initial — dispatch, primary, mental status/CC/history; (2) vitals; (3) assessment — impression, secondary/exam, and all blocks/templates; (4) disposition — ongoing/transport and disposition.
 
 ---
 
@@ -18,12 +20,13 @@ Conventions
 35M___ dispatched to ___ for ___. 35M___ responded [emergency / non-emergency]. 35M___ arrived on scene (___ on location) and found ___ yo [M/F] pt ___ {position, location, appearance, scene}.
 
 **Primary**
+{traumaGeneral / traumaMinor / burns only — traumaMajor uses its own SMR line in §6:} Spinal motion restriction: [c-collar applied and secured to stretcher at ___ for ___ {AMS or intoxication, neck/spine pain or tenderness, weakness/tingling/numbness since injury, spinal deformity, distracting injury, high-risk MOI: axial load, high-speed MVC/rollover, ped or bike struck, fall >3 ft/5 steps/pt height, or Red criteria blunt} / not indicated: no AMS, no spine pain or tenderness, no neuro sx, no deformity, no distracting injury, MOI not high-risk {use caution >65}].
 Pt [+/-] patent airway, [+/-] breathing w/ initial L/S ___, [+/-] ___ pulse {location, quality}, skin ___.
 {Conditional line, only if something was done before the full assessment:} ___ {e.g. "Pt placed on NRB 15 LPM." "Narcan 4 mg IN administered." "Tourniquet applied R thigh ___." Delete if nothing.}
 
 **Mental status / CC / History**
-Pt A+Ox___ (P, P, T, E), [A/V/P/U], and complaining of ___ {onset, duration, in pt's words}. [Pt / bystanders / family / healthcare staff] state ___.
-Pt PMHx ___. Meds [per list / ___ / noncompliant ___]. Allergies [NKDA / ___]. {Add: last oral intake, LMP, DNR/MOLST status when relevant.}
+Pt A+Ox___ (P, P, T, E), [A/V/P/U], [+ LOC ~___ min / - LOC / unknown LOC], and complaining of ___ {onset, duration, in pt's words}. [Pt / bystanders / family / healthcare staff] state ___.
+Pt PMHx ___. Meds [per list / ___ / noncompliant ___] {any that apply}. Allergies [NKDA / ___]. {Add: last oral intake, LMP, DNR/MOLST status when relevant.}
 
 **Assessment**
 Vitals as noted in emsCharts activity log, [stable / concerning for ___] {restate only the numbers that drive the DDx or a treatment}.
@@ -61,7 +64,7 @@ Two sub-blocks. Chest pain with a normal rhythm uses 2a only. A rhythm problem w
 Escalates to: STEMI template (2a). Cardiac Arrest template if pulses lost (2b). Hypotension with a shock picture: name the etiology in DDx and add the matching block (Tox, Sepsis, Trauma, Allergic).
 
 ### 2a. Cardiac / ACS
-Pt describes ___ {OPQRST: onset, provocation, quality, radiation, severity ___/10, time, exertional or at rest, prior similar}. Associated [SOB / diaphoresis / N/V / lightheadedness / syncope / palpitations / none]. Cardiac risk factors ___ {HTN, HLD, DM, smoker, FHx, prior MI/CABG/stent, cocaine use}.
+Pt describes ___ {OPQRST: onset, provocation, quality, radiation, severity ___/10, time, exertional or at rest, prior similar}. Associated [SOB / diaphoresis / N/V / lightheadedness / syncope / palpitations / none] {any that apply}. Cardiac risk factors ___ {HTN, HLD, DM, smoker, FHx, prior MI/CABG/stent, cocaine use}.
 12-lead acquired at ___ {before NTG if pt has no Rx NTG}: ___ {rhythm, rate, axis, intervals, ST/T changes by lead, or "no acute changes"}, transmitted at ___. {If inferior changes: R-sided 12-lead ___. If STE: jump to escalation line.}
 ASA 324 mg chewed [administered at ___ / withheld: ___ {allergy, unable to chew, active GI bleed}]. {Took ASA before arrival but dose uncertain: give and say why.}
 NTG 0.4 mg SL [x___ at ___, ___ min apart, SBP ___ before each dose, pain ___ to ___/10 / withheld: ___ {SBP ≤120 or MAP ≤90, R-sided changes, PDE-5 inhibitor within 48h}]. {SBP drops <100 after NTG: supine, NS 500 mL bolus at ___, reassessed ___.}
@@ -69,13 +72,14 @@ IV ___g ___ at ___ {or IO, or attempts failed x___}. Fluids [none / ___ mL NS bo
 Fentanyl ___ mcg [IV / IM / IN] at ___ {1-1.5 mcg/kg, repeat after 10 min, max 200 mcg total} for pain ___/10 unrelieved by NTG, pain ___ to ___/10 / withheld: ___ {pain improved, pt declined, SBP, AMS}. {No ketorolac in suspected ACS.}
 {Symptomatic HTN only:} BP ___ with ___ {headache, vision change, CP, neuro deficit}. Neuro exam ___. No antihypertensive given.
 {Hypotension only:} SBP ___, ___ {skin, mental status, cap refill}. Suspected etiology ___. ___ mL NS bolus at ___, reassessed SBP ___. {Pressor only w/ med control, cite in Medical control line.}
-Serial 12-lead at ___: [unchanged / ___].
+{If performed:} Serial 12-lead at ___: [unchanged / ___].
 **Escalation line:** STEMI criteria [not met on serial 12-leads / MET: ___ {leads, mm}, STEMI alert called to ___ at ___, 12-lead transmitted. Switch to STEMI template.]
 
 ### 2b. Cardiac / Dysrhythmia
 Monitor at ___: ___ {rhythm, rate, regularity, QRS width, P-wave relationship, block degree and type}. 12-lead at ___ confirms ___. {Print and attach the strip that shows the diagnosis.}
 Pt [hemodynamically stable / UNSTABLE: ___ {which of: SBP <90, AMS, ischemic CP, acute CHF, syncope}]. Onset ___ {known time, or "unknown, >48h" for rate-control decisions}. Prior hx of this rhythm [Y, ___ / N]. Anticoagulated [Y ___ / N].
-IV ___g ___ at ___. Pads applied at ___ [prophylactically / for pacing / for cardioversion].
+IV ___g ___ at ___.
+{If performed:} Pads applied at ___ [prophylactically / for pacing / for cardioversion].
 
 {Pick the fork that applies. Delete the rest.}
 
@@ -104,7 +108,7 @@ Post-intervention rhythm ___ at ___, 12-lead at ___: ___. Pt [symptoms resolved 
 Categories: Breathing Problems, Choking, COVID-19 Related/Potential
 Escalates to: Respiratory Arrest template. Allergic block if anaphylaxis is the cause. Cardiac block if CHF from a rhythm or ACS.
 
-Pt [speaking full sentences / ___-word sentences / unable to speak], [tripod / supine / ___], accessory muscle use [Y / N], [retractions / nasal flaring / pursed lips / none]. RR ___, SpO2 ___% on [RA / ___]. L/S ___ {by field: clear, wheezes, rales, rhonchi, diminished, absent}, ETCO2 ___ with [normal / shark-fin / ___] waveform.
+Pt [speaking full sentences / ___-word sentences / unable to speak], [tripod / supine / ___], accessory muscle use [Y / N], [retractions / nasal flaring / pursed lips / none] {any that apply}. RR ___, SpO2 ___% on [RA / ___]. L/S ___ {by field: clear, wheezes, rales, rhonchi, diminished, absent}, ETCO2 ___ with [normal / shark-fin / ___] waveform.
 Onset ___ {sudden / gradual over ___}, [exertional / at rest], associated [fever / productive cough ___ / CP / orthopnea / PND / leg swelling / recent illness / sick contacts / travel / none]. Hx [asthma / COPD / CHF / PE / smoker ___ ppd / home O2 ___ LPM / prior intubation for this]. Rescue inhaler used ___ times prior to arrival.
 Working etiology ___ {reactive airway, CHF/pulmonary edema, pneumonia, PE, pneumothorax, FBAO, other}.
 
@@ -149,7 +153,7 @@ Onset ___ {sudden / gradual}, [witnessed by ___ / unwitnessed, found at ___]. As
 {Pick the fork that applies. Delete the rest.}
 
 *Seizure:*
-Seizure [witnessed by ___ / reported], type ___ {generalized tonic-clonic, focal, absence}, duration ___ min, [single / x___ / continuous on arrival]. Postictal on arrival [Y, GCS ___ / N]. Seizure hx [Y, typical for pt / Y, atypical: ___ / N, first-time]. Meds [compliant / missed ___]. Injuries from seizure ___.
+Seizure [witnessed by ___ / reported], type ___ {generalized tonic-clonic, focal, absence}, [single / x___ / continuous on arrival], [<5 min / >5 min, ~___ min / status epilepticus]. Postictal on arrival [Y, GCS ___ / N]. Seizure hx [Y, typical for pt / Y, atypical: ___ / N, first-time]. Meds [compliant / missed ___]. Injuries from seizure ___.
 Midazolam [10 mg IM / 10 mg IN / 5 mg IV] at ___ for [active seizure / recurrent without return to baseline], seizure [stopped at ___ / continued, repeat dose ___ at ___ {once, after 5 min}] / withheld: ___ {self-terminated, postictal only}. {Pregnant or ≤6 wks postpartum: OB block, mag per pre-eclampsia/eclampsia protocol.}
 Recovery: GCS ___ to ___ by ___.
 
@@ -172,12 +176,11 @@ IV ___g ___ at ___. Treatments per fork above. Pt reassessed at ___: GCS ___, NY
 Categories: Assault, Fall Victim, Industrial Accident, Pain (Traumatic), Traffic Accident
 Escalates to: Trauma Major block on any RED criterion, or a discretionary trauma alert. YELLOW criteria alone: pt goes to a trauma center, documented here, block stays General. Cardiac Arrest template (trauma addendum) if pulses lost.
 
-MOI: ___ {fall from ___ ft onto ___, MVC ___ mph, restrained/unrestrained, airbag, intrusion ___, ejection, rollover, windshield/steering wheel deformity, assault with ___ to ___, machinery ___}. Time of injury ___. [Helmet / seatbelt / PPE] [Y / N / unknown]. LOC [Y ___ min / N / unknown]. Ambulatory on scene [Y / N]. {Elderly, anticoagulated, or intoxicated: say so here, it changes the triage math.}
+MOI: ___ {fall from ___ ft onto ___, MVC ___ mph, restrained/unrestrained, airbag, intrusion ___, ejection, rollover, windshield/steering wheel deformity, assault with ___ to ___, machinery ___}. Time of injury ___. [Helmet / seatbelt / PPE] {any that apply} [Y / N / unknown]. Ambulatory on scene [Y / N]. {Elderly, anticoagulated, or intoxicated: say so here, it changes the triage math.}
 GCS ___ (E___ V___ M___), pupils ___. Pt [denies / reports] head, neck, or back pain. Distracting injury [Y ___ / N]. Intoxication [Y / N].
-Spinal motion restriction: [c-collar applied and secured to stretcher at ___ for ___ {AMS or intoxication, neck/spine pain or tenderness, weakness/tingling/numbness since injury, spinal deformity, distracting injury, high-risk MOI: axial load, high-speed MVC/rollover, ped or bike struck, fall >3 ft/5 steps/pt height, or Red criteria blunt} / not indicated: no AMS, no spine pain or tenderness, no neuro sx, no deformity, no distracting injury, MOI not high-risk {use caution >65}].
-Injuries found on exam: ___ {by region, head to toe, with side. "Contusion L lateral chest wall, no crepitus, no paradoxical movement." Or "No injuries found."} Distal CMS [intact x4 / ___].
+[no DCAP-BTLS observed head-to-toe / DCAP-BTLS +]. Injuries found on exam: ___ {by region, head to toe, with side. "Contusion L lateral chest wall, no crepitus, no paradoxical movement." Or "No injuries found."} Distal PMS [intact x4 / ___].
 Hemorrhage control: [none required / direct pressure ___ at ___ / pressure dressing / hemostatic gauze packed ___, pressure held ___ min / tourniquet ___ 2-3 in proximal at ___, time written on TQ, second TQ at ___]. TQ conversion [not attempted / attempted at ___: pressure dressing applied, windlass released, ___ {no rebleed, TQ left in place loose / rebleed, re-tightened}]. Estimated blood loss ___.
-Splinting: ___ {what, how, CMS before and after} / not indicated.
+Splinting: ___ {what, how, PMS before and after} / not indicated.
 Analgesia {one narcotic on standing order}: fentanyl ___ mcg [IV / IM / IN] at ___ {1-1.5 mcg/kg, repeat after 10 min, max 200 mcg} / morphine ___ mg at ___ / ketamine [25 mg IV over 5 min / 50 mg IM] at ___ / acetaminophen 1000 mg PO at ___ {not if >650 mg within 4h, liver dz, shock} / ketorolac 15 mg [IV / IM] at ___ {not if >60, anticoagulated, bleeding, renal, pregnant}, pain ___/10 to ___/10 / withheld: ___ {pain controlled, SBP, AMS, pt declined}.
 IV ___g ___ at ___. Fluids [none / ___ mL NS for SBP ___, reassessed ___].
 Field triage criteria reviewed at ___: RED [none / ___]. YELLOW [none / ___ {high-risk auto crash: ejection, intrusion >12 in occupant or >18 in any site, extrication, death in compartment, telemetry; rider separated with significant impact; ped/bike thrown or run over; fall >10 ft; EMS judgment: low-level fall ≥65 or ≤5 with head impact, anticoagulant use, pregnancy >20 wks, burns with trauma}].
@@ -198,12 +201,12 @@ Massive hemorrhage: [none / ___ {site}, controlled with ___ {TQ at ___ with time
 Airway: [patent, self-maintained / ___ {NPA, OPA, suction for ___, positioned}]. {Advanced airway: device, size, attempts, confirmation by ETCO2 ___ and ___, secured at ___ cm, time.}
 Respirations: L/S ___ bilat, chest [symmetric / ___ {paradoxical, crepitus, open wound}]. Occlusive dressing to ___ at ___. Needle decompression ___ side, ___ ICS ___ line at ___, [rush of air / SBP ___ to ___] / not indicated: ___. SpO2 ___, ETCO2 ___.
 Circulation: radial pulse [present / absent], SBP ___, MAP ___, skin ___. IV/IO ___g ___ at ___, second access ___. NS 500 mL bolus at ___ for SBP <100 / MAP <65, reassessed SBP ___, L/S ___, repeated ___ {to 2 L max while L/S clear, goal SBP ≥100 / MAP ≥65}. TXA 2 g in 100 mL over 10 min at ___ for traumatic hemorrhage with SBP <100 / withheld: ___ {SBP ≥100}. Pelvic binder at ___ for ___ / not indicated.
-Head/spine: SMR via ___ at ___. Pupils ___, [equal / unequal ___], posturing [none / ___]. Signs of basilar skull fx [none / ___]. Anticoagulated [Y ___ / N]. {Herniation signs: hyperventilation to ETCO2 ___ at ___, or say not indicated.}
+Head/spine: SMR via ___ at ___. Pupils ___, [PEARL / unequal ___], posturing [none / decorticate / decerebrate]. Signs of basilar skull fx [none / fluid from L ear / fluid from R ear / halo sign / Battle sign / raccoon eyes] {any that apply; none is exclusive by convention}. Anticoagulated [Y ___ / N]. {Herniation signs: hyperventilation to ETCO2 ___ at ___, or say not indicated.}
 Hypothermia prevention: ___ {blankets, heat on, wet clothing removed}.
-Injuries found on exam: ___ {head to toe, by region, with side}. Distal CMS ___.
+Injuries found on exam: ___ {head to toe, by region, with side}. Distal PMS ___.
 {Hanging/strangulation add:} Ligature marks ___, petechiae [face / conjunctiva / none], voice change [Y / N], stridor [Y / N], subcutaneous emphysema [Y / N]. C-spine ___. {Airway swelling is delayed; say you reassessed it.}
 Splinting ___. Analgesia: fentanyl ___ mcg ___ at ___ / ketamine ___ mg ___ at ___, pain ___ to ___ / withheld: ___ {SBP, GCS, airway}.
-Pt reassessed at ___: GCS ___, SBP ___, SpO2 ___, ETCO2 ___, hemorrhage control [holding / ___].
+Pt reassessed at ___: GCS ___, SBP ___, SpO2 ___, ETCO2 ___, hemorrhage control [bleeding controlled / ___].
 Destination ___ {Level I / II trauma center, name}, [by ground / air, ___ requested at ___, landed ___]. Scene time ___ min {if >10 min, say why in one clause}.
 **Escalation line:** Pulses [maintained throughout / LOST at ___. Switch to Cardiac Arrest template, trauma addendum.]
 
@@ -230,7 +233,7 @@ Pt [ambulatory with assistance / unable to ambulate], speech ___, odor of ETOH [
 Supportive care. Airway as above. Poison Control [contacted at ___, ref ___, recommendations ___ / not contacted: ___]. Activated charcoal [not given / ___ per med control].
 
 *Sympathomimetic / agitated:*
-Agitation: verbal de-escalation attempted ___ [effective / ineffective], environmental modification ___, danger to [self / crew / public]. BGL ___ when safe. Midazolam ___ mg [IM / IV] at ___ {up to 5, repeat to 10 total} / olanzapine [10 mg IM / 5 mg SL / 2.5-5 mg IM if ≥65] at ___ / ketamine 250 mg IM at ___ for ___ {clinical triad: psychomotor agitation, physiologic excitation, failed de-escalation, with ___ of: unusual strength, no tiring, pain tolerance, tachypnea, diaphoresis, hyperthermia, AMS}, repeated 250 mg IM at ___ {once, after 5 min} / withheld: ___. Response at ___: ___. Airway, SpO2, ETCO2 monitored continuously after sedation: ___. Temp ___ {hyperthermia treated with ___}. Restraints [none / soft, ___ points, applied at ___ by ___, supine, CMS checked q___, reason ___]. Pt not transported prone. PD [on scene / requested at ___].
+Agitation: verbal de-escalation attempted ___ [effective / ineffective], environmental modification ___, danger to [self / crew / public]. BGL ___ when safe. Midazolam ___ mg [IM / IV] at ___ {up to 5, repeat to 10 total} / olanzapine [10 mg IM / 5 mg SL / 2.5-5 mg IM if ≥65] at ___ / ketamine 250 mg IM at ___ for ___ {clinical triad: psychomotor agitation, physiologic excitation, failed de-escalation, with ___ of: unusual strength, no tiring, pain tolerance, tachypnea, diaphoresis, hyperthermia, AMS}, repeated 250 mg IM at ___ {once, after 5 min} / withheld: ___. Response at ___: ___. Airway, SpO2, ETCO2 monitored continuously after sedation: ___. Temp ___ {hyperthermia treated with ___}. Restraints [none / soft, ___ points, applied at ___ by ___, supine, PMS checked q___, reason ___]. Pt not transported prone. PD [on scene / requested at ___].
 
 *CO / hazmat / inhalation:*
 Scene [safe / hazmat staged / ___ metered ___ ppm by ___]. Exposure duration ___, others exposed ___. SpCO ___ if available. High-flow O2 NRB 15 LPM at ___. Symptoms ___ {headache, N/V, confusion, syncope, CP}. Decon [performed by ___ / not required]. Destination [hyperbaric-capable ___ / ___].
@@ -290,8 +293,8 @@ Pt reassessed at ___: ___.
 Categories: Abdominal Pain, GI Bleed, Nausea/Vomiting, Pain (Non-cardiac)
 Escalates to: Metabolic/Sepsis block if septic; Cardiac 2a if epigastric pain is cardiac-suspicious (>35 yo, risk factors, diaphoresis); OB block if pregnant; Trauma if traumatic.
 
-Pain: ___ {OPQRST, location by quadrant, radiation to back/groin/shoulder, quality}. Associated [N/V ___ episodes / diarrhea / constipation, last BM ___ / fever / urinary sx / melena / hematemesis ___ {coffee-ground, bright red, volume} / hematochezia / none]. Last oral intake ___. {Female of childbearing age: LMP ___, pregnancy [possible / denied].}
-Abd exam: [soft / rigid / guarded], [NT / tender ___ quadrant], [distended / non-distended], [rebound / none], [pulsatile mass / none]. {>50 with back/abd pain: bilateral femoral pulses ___, "AAA not excluded" in DDx if any asymmetry or hypotension.}
+Pain: ___ {OPQRST, location by quadrant, radiation to back/groin/shoulder, quality}. Associated [N/V ___ episodes / diarrhea / constipation, last BM ___ / fever / urinary sx / melena / hematemesis ___ {coffee-ground, bright red, volume} / hematochezia / none] {any that apply}. Last oral intake ___. {Female of childbearing age: LMP ___, pregnancy [possible / denied].}
+Abd exam: [soft / rigid / guarded], [NT / tender ___ quadrant], [distended / non-distended], [rebound tenderness / none], [pulsatile mass / none]. {>50 with back/abd pain: bilateral femoral pulses ___, "AAA not excluded" in DDx if any asymmetry or hypotension.}
 {GI bleed:} Skin ___, orthostatics ___, anticoagulated [Y ___ / N], prior GI bleed [Y / N], ETOH hx [Y / N]. Estimated blood loss per pt/scene ___.
 12-lead at ___ for epigastric/upper abd pain: ___ / not indicated: ___.
 IV ___g ___ at ___. NS ___ mL at ___ for ___, reassessed ___ / none.
@@ -321,10 +324,10 @@ Pt reassessed at ___: airway ___, L/S ___, SBP ___, rash ___.
 Categories: Anxiety, Psychiatric Problems
 Escalates to: Tox block for ingestion; Neuro block if medical cause suspected; the agitated-patient fork in Tox for chemical restraint (same documentation either way).
 
-Presentation: ___ {in pt's words and observed affect/behavior}. [Danger to self: ___ / danger to others: ___ / neither expressed or observed]. SI [denied / expressed: ___ {plan, means}]. HI [denied / expressed: ___].
+Presentation: ___ {in pt's words and observed affect/behavior}. [Danger to self: ___ / danger to others: ___ / neither expressed or observed] {any that apply}. SI [denied / expressed: ___ {plan, means}]. HI [denied / expressed: ___].
 Medical screen: BGL ___, [no evidence of trauma, intoxication, hypoxia, or acute medical cause / ___]. Psych hx ___ {dx, meds, compliance ___, prior admissions}. Recent stressors/changes ___.
 De-escalation: [verbal effective, pt cooperative / ___]. PD [on scene / requested at ___ / not needed]. {MHL status if applicable: 9.41 by PD, 9.45 by Director of Community Services (DCS), or voluntary. Involuntary transport: capacity determination and PD role documented plainly.}
-Restraints [none / soft ___ points at ___ by ___, supine, CMS q___, reason: ___]. Sedation [none / see Tox agitated fork, documented there].
+Restraints [none / soft ___ points at ___ by ___, supine, PMS q___, reason: ___]. Sedation [none / see Tox agitated fork, documented there].
 Pt transported [voluntarily / involuntarily under ___] to ___ {CPEP-capable ED if that drove the destination}.
 **Escalation line:** Pt remained [calm and cooperative / ___] throughout. Medical causes screened: BGL ___, no acute medical findings / [medical cause suspected: ___, see ___ block].
 
@@ -417,13 +420,14 @@ Requested by [___ PD, Officer ___, badge ___] at ___ for ___.
 ## 19. TRAUMA MINOR / MSK BLOCK
 Categories: Animal Bite, Back Pain, Eye Problem, Foot Injury, Fracture/Dislocation, Hemorrhage/Laceration, Pain (extremities), Soft Tissue Injury
 Escalates to: Trauma General/Major if MOI or findings say so (field triage criteria reviewed and negative is the load-bearing line here).
+{SMR/c-spine: covered by the shell Primary line for this block.}
 
 MOI: ___ {low-energy, in one clause}. Time of injury ___.
-Injury: ___ {what, where, side, size for wounds}. Distal CMS [intact / ___] before and after any splint. [Deformity / swelling / ecchymosis / wound edges ___ / none].
+Injury: ___ {what, where, side, size for wounds}. Distal PMS [intact / ___] before and after any splint. [Deformity / swelling / ecchymosis / wound edges ___ / none] {any that apply}.
 {Bite:} Animal ___, [provoked / unprovoked], owner ___ {known, vaccination status ___ / unknown/stray}, [animal control / PD] notified at ___. Wound irrigated with ___ at ___.
 {Eye:} Visual acuity [grossly intact / ___ ], [no globe injury evident / ___]. Irrigation ___ / tetracaine 2 gtt at ___ / not indicated. {Penetrating globe: no pressure, shield, escalate.}
 {Back pain, atraumatic red flags screened:} [no saddle anesthesia, no new incontinence/retention, no bilateral leg weakness, no fever, no anticoagulants, no cancer hx / ___: escalate DDx].
-Wound care: [irrigated / dressed ___ / bleeding controlled with direct pressure at ___]. Splint: ___ {type, position} at ___, CMS rechecked ___ / not indicated.
+Wound care: [irrigated / dressed ___ / bleeding controlled with direct pressure at ___]. Splint: ___ {type, position} at ___, PMS rechecked ___ / not indicated.
 Analgesia: [acetaminophen 1000 mg PO / ibuprofen 400 mg PO {not if >60, anticoagulated, renal, pregnant} / ketorolac 15 mg at ___ {same limits} / fentanyl ___ mcg at ___ / none, pain ___/10, pt declined].
 Field triage criteria reviewed: [no RED or YELLOW criteria].
 **Escalation line:** [Isolated ___ injury, no triage criteria met / criteria MET: ___, see Trauma General/Major].
@@ -527,16 +531,14 @@ Released by ___ at ___. Demobilized, unit restocked at ___, returned to service 
 {Uses shell + 2a. This is what a finished narrative looks like once the notes are deleted.}
 
 35M3 dispatched to a private residence in the Town of Cortlandt for a 68 yo M with chest pain. 35M3 responded emergency. 35M3 arrived on scene (Cortlandt Community VAC on location) and found 68 yo M pt seated on the edge of his bed, diaphoretic, clutching his chest, in moderate distress.
-
 Pt + patent airway, + breathing w/ initial L/S clear bilat, + radial pulse strong and regular, skin pale, cool, diaphoretic. Pt placed on NC 2 LPM by VAC prior to arrival, SpO2 96%.
-
-Pt A+Ox4 (P, P, T, E), alert, and complaining of "pressure in the middle of my chest" x 45 min, onset at rest while watching TV. Pt states pain radiates to L arm and jaw, 7/10, worse than anything prior, with nausea and one episode of lightheadedness on standing. Wife states pt "looked gray" and took nothing prior to calling 911.
-Pt PMHx HTN, HLD, DM2, ex-smoker quit 2015, no prior cardiac hx. Meds lisinopril, atorvastatin, metformin, per list, compliant. NKDA. Last oral intake dinner 1900. No MOLST.
+Pt A+Ox4 (P, P, T, E), A, - LOC, and complaining of "pressure in the middle of my chest" x 45 min, onset at rest while watching TV. Pt states pain radiates to L arm and jaw, 7/10, worse than anything prior, with nausea and one episode of lightheadedness on standing. Wife states pt "looked gray" and took nothing prior to calling 911.
+Pt PMHx HTN, HLD, DM2, ex-smoker quit 2015, no prior cardiac hx. Meds per list, compliant. NKDA. Last oral intake dinner 1900. No MOLST.
 
 Vitals as noted in emsCharts activity log, concerning for initial BP 152/90, HR 88, RR 20, SpO2 96% on 2 LPM, BGL 164.
-Working impression ACS. DDx unstable angina vs NSTEMI vs aortic dissection vs PE.
 
-Pt describes substernal pressure, non-reproducible, non-pleuritic, no tearing quality, equal radial pulses bilat, no calf tenderness, no recent immobility. Associated diaphoresis, N, lightheadedness. Cardiac risk factors HTN, HLD, DM, former smoker, FHx father MI at 62.
+Working impression ACS. DDx unstable angina vs NSTEMI vs aortic dissection vs PE.
+Pt describes substernal pressure, non-reproducible, non-pleuritic, no tearing quality, equal radial pulses bilat, no calf tenderness, no recent immobility. Associated diaphoresis, N/V, and lightheadedness. Cardiac risk factors HTN, HLD, DM, former smoker, FHx father MI at 62.
 12-lead acquired at 2214: NSR 88, normal axis, intervals WNL, nonspecific T-wave flattening in V5-V6, no ST elevation or depression, no reciprocal changes.
 ASA 324 mg PO administered at 2216.
 NTG 0.4 mg SL x2 at 2217 and 2223, pain 7 to 3/10, BP 138/84 after second dose.
@@ -544,11 +546,9 @@ IV 18g L AC at 2220, saline lock. Fluids none.
 Fentanyl withheld: pain improved to 3/10 with NTG, pt declined further analgesia.
 Serial 12-lead at 2228: unchanged.
 STEMI criteria not met on serial 12-leads.
-
 Secondary assessment head-to-toe unremarkable except mild diaphoresis, resolved by 2230. Abd soft, NT. No pedal edema. Neuro grossly intact.
 
 Pt reassessed en route at 2236: pain 2/10, skin warm and dry, SpO2 97% on 2 LPM. Remaining vitals per activity log.
-
 Pt txp ALS to NYP-HVHC. Hospital notified via cell at 2233. No pt changes throughout txp. Pt transferred to ED staff, report given to RN Martinez. 35M3 returned to service without further incident.
 
 ---
@@ -558,3 +558,26 @@ Pt txp ALS to NYP-HVHC. Hospital notified via cell at 2233. No pt changes throug
 - Resolved: START for MCI; monitor data attached for every pt assessed and/or treated (arrest code summary included).
 - One caution on S-LAMS-only: the protocol names Cincinnati as the required scale, with regional scales in addition. Documenting LAMS alone still captures the same three findings plus grip, so a reviewer gets everything Cincinnati asks, but if CPRPS QA ever asks "where's the Cincinnati," the answer is "contained within the LAMS components." Your call stands; just know the argument.
 - Next: voice-consistency pass, then the quick-reference shift version (skeletons only, notes stripped).
+
+---
+
+## 28. REVISION HISTORY
+
+**v0.9 — 2026-09-01.** Sync pass closing the SYNC DEBT between this MD and the builder's DOC (18 defaults-review changes had been applied to the DOC directly, MD trailing until now — 13 of them needed MD-side sync, listed below), plus three demotion rulings from the same review.
+- Meds marked multi-select (`{any that apply}`).
+- LOC moved to the shell AOx/mental-status sentence with full capture — `[+ LOC ~___ min / - LOC / unknown LOC]`, unconditional for every call type; the traumaGeneral MOI's own `LOC [Y ___ min / N / unknown]` line removed as redundant.
+- DCAP-BTLS pill added ahead of the traumaGeneral injuries line.
+- Posturing options: `[none / decorticate / decerebrate]`.
+- Basilar skull fx signs: named multi-select options (fluid from L/R ear, halo sign, Battle sign, raccoon eyes; none exclusive by convention).
+- Hemorrhage control reassessment: "holding" → "bleeding controlled".
+- Abdominal exam: "rebound" → "rebound tenderness".
+- Pupils: "equal" → "PEARL".
+- Terminology: "CMS" → "PMS" (pulse, movement, sensation) at all 7 distal/splint/restraint sites; underlying field ids unchanged.
+- Spinal motion restriction moved from Trauma General to the shell Primary line, conditional on traumaGeneral/traumaMinor/burns (Trauma Major keeps its own SMR line in §6); Trauma Minor now cross-references the shell line instead of carrying none.
+- Seizure duration: free-text minutes → `[<5 min / >5 min, ~___ min / status epilepticus]` pill.
+- Seizure line reordered: witnessed, type, pattern, then duration.
+- Ruling A (abdominal LOI): the block owns it — Abdominal's own last-oral-intake line stays, the shell's LOI line no longer auto-expands for abdominal (builder-side condition change; cardiac/metabolic unaffected).
+- Ruling B (ACS serial 12-lead): demoted to optional, styled `{If performed:}` after the §2a Symptomatic HTN/Hypotension precedent.
+- Ruling C (dysrhythmia pads): split out of the IV line into its own optional `{If performed:}` line; emitted wording unchanged when filled.
+- Conventions: added the multi-select notation (`{any that apply}`, applied here and to the five pre-existing multi fields already in the doc) and the four-paragraph structure statement.
+- Worked sample (§26): respaced to the four-paragraph model, AOx sentence updated to a real emission (`A, - LOC,`), meds sentence simplified to "Meds per list, compliant.", Associated list made a valid Oxford emission ("diaphoresis, N/V, and lightheadedness").
