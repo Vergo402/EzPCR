@@ -3414,7 +3414,10 @@ function toggleAddBlock() {
   if (!pop.hidden) { pop.hidden = true; return; }
   pop.innerHTML = "";
   const group = function (heading, bag) {
-    const ids = Object.keys(bag || {});
+    // DOC declares owners in clinical-family order; the picker reads by name.
+    const ids = Object.keys(bag || {}).sort(function (a, b) {
+      return bag[a].name.localeCompare(bag[b].name);
+    });
     if (!ids.length) return;
     pop.appendChild(el("div", "popup-head", heading));
     ids.forEach(function (k) {
