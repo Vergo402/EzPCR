@@ -199,6 +199,65 @@ button:active { background: var(--tint); }
 input.time { font-variant-numeric: tabular-nums; }
 input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var(--red-text) inset; }
 
+/* ---- ordering: drag handles, paragraph badges ---- */
+/* piece 4 wires the drag itself; this only reserves the geometry and paints the
+   badge, so a pristine draft is unchanged but for the gutter and the pill. */
+.ws-line { display: flex; align-items: flex-start; gap: 6px; }
+.ws-line-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.ws-line.ws-loose { padding: 2px 0; }
+
+.ws-handle {
+  flex-shrink: 0; width: 20px; height: 27px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: transparent; cursor: grab; padding: 0; touch-action: none;
+  opacity: 0; transition: opacity .12s ease;
+}
+.ws-line > .ws-handle { margin-top: 5px; }
+.ws-line:hover > .ws-handle, .ws-handle:focus-visible, .ws-sec:hover > .ws-sechead .ws-handle { opacity: 1; }
+@media (hover: none) { .ws-handle { opacity: 1; } }
+.ws-dots {
+  width: 10px; height: 15px; color: var(--text-faint);
+  background-image: radial-gradient(circle, currentColor 1.2px, transparent 1.3px);
+  background-size: 5px 5px;
+}
+
+/* base pill styling is shared by the per-line badge and the box's own badge (which
+   lives in its sechead, not a .ws-line); only the .ws-line context also pins it to
+   the top of the unit, aligned with the first row */
+.ws-para {
+  flex-shrink: 0; font-size: 10.5px; color: var(--text-faint);
+  border: 1px solid var(--border); border-radius: 999px; padding: 0 6px;
+}
+.ws-line > .ws-para { align-self: flex-start; margin-top: 5px; }
+.ws-para-moved { color: var(--amber-text); border-color: var(--amber-text); }
+
+/* a box's sechead is the only one that ever carries data-unit (shell and disposition
+   heads never do), so scoping the layout fix to that attribute keeps every other
+   sechead's default space-between untouched by construction rather than by reasoning */
+.ws-sec[data-unit] > .ws-sechead { justify-content: flex-start; }
+.ws-sec[data-unit] > .ws-sechead > .ws-sectools { margin-left: auto; }
+
+/* the drag lift needs an offset parent, and this is the only positioned ancestor
+   between a unit and the page: without it, left/top would resolve against <body>. */
+#worksheet { position: relative; }
+
+/* drag-state hooks, wired by piece 4: .ws-lifted/.ws-drop-slot/body.ws-dragging back
+   the pointer drag; .ws-kbgrab is its keyboard twin — same lifted look, but static in
+   flow, since a grabbed-not-yet-moved unit hasn't left the document order. */
+.ws-line.ws-lifted, .ws-sec.ws-lifted {
+  position: absolute; z-index: 40; background: var(--sheet);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  box-shadow: 0 6px 16px rgba(60,50,30,.18);
+}
+.ws-line.ws-kbgrab, .ws-sec.ws-kbgrab {
+  position: static; background: var(--sheet);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  box-shadow: 0 6px 16px rgba(60,50,30,.18);
+}
+.ws-drop-slot { border: 1px dashed var(--text-faint); border-radius: var(--radius-sm); background: var(--tint); }
+body.ws-dragging { user-select: none; -webkit-user-select: none; }
+
 /* ---- pills + chips (worksheet controls and the escalation modal) ---- */
 .pill, .chip { height: 25px; padding: 0 11px; font-size: 12px; border-radius: 999px; vertical-align: baseline; }
 .pill.on, .chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 500; }
@@ -283,6 +342,7 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
       <div id="add-block-popup" hidden></div>
     </div>
     <div id="draft-switcher" hidden></div>
+    <button id="reset-order" type="button" hidden>Reset order</button>
     <button id="new-call" type="button">New call</button>
   </div>
 </header>
@@ -671,6 +731,402 @@ function paraOf(sectionId, lineId) {
   return PARA.slot;
 }
 
+/* ============================ ORDERING ============================ */
+
+/**
+ * User-controlled order. The DEFAULT order is DOC's own — shell sections in
+ * declaration order, the block slot at its anchor, the disposition last — and that
+ * default is what an untouched draft renders, unchanged from before any of this
+ * existed. A medic may rearrange it by dragging, and the arrangement is stored as
+ * three small, additive facts on the draft:
+ *
+ *   topOrder       null until the first drag, then the whole top-level order. NULL,
+ *                  not an empty array: an untouched draft has to keep following DOC
+ *                  as DOC grows, and only the absence of a stored order says so.
+ *   lineOrder      regionKey -> line keys, frozen one region at a time for the same
+ *                  reason — a region nobody dragged inside still follows DOC.
+ *   paraOverrides  unitKey -> 1..4, stored only where it differs from the unit's home
+ *                  paragraph, so a unit that is merely moved keeps answering to DOC.
+ *
+ * Three kinds of unit key are addressable:
+ *   "line:<lineId>"    one sentence. A fork's option lines are NOT units of their own:
+ *                      they ride with the fork line that owns them (see FORK_PARENT).
+ *   "owner:<ownerId>"  one whole block/template box; every row inside moves with it.
+ *   "sec:<sectionId>"  a fixed shell region, plus "sec:disposition". Sections are not
+ *                      draggable, but they are entries in the top-level order because
+ *                      lines are dropped relative to them.
+ * A regionKey is a "sec:" or "owner:" key read as a container: where a line lives.
+ *
+ * Nothing here renders, and nothing here saves. Everything is a pure read of DOC plus
+ * the draft, except applyMove() and resetOrder(), which mutate the draft and leave
+ * both the redraw and the write to their caller.
+ */
+const TOP_REGION = "__top__";
+
+/** lineId -> the outermost fork line it rides with. Filled by indexLines(). */
+const FORK_PARENT = Object.create(null);
+
+/**
+ * Which region does a line belong to when nobody has moved it?
+ * @param {string} lineId @returns {string|null} regionKey, or null for an unknown line
+ */
+function homeRegionOf(lineId) {
+  const rec = LINE_INDEX[lineId];
+  if (!rec) return null;
+  if (rec.ownerType === "shell") return "sec:" + rec.ownerId;
+  if (rec.ownerType === "disposition") return "sec:disposition";
+  return "owner:" + rec.ownerId;
+}
+
+/**
+ * The paragraph a unit lands in with nothing overriding it. A line answers from its
+ * HOME section, so dragging a sentence somewhere else does not silently re-file it —
+ * only an override does that. Every box is the slot paragraph.
+ * "sec:" keys are an extension used by applyMove()'s neighbour scan: a section cannot
+ * be dragged, but it is a legitimate neighbour to inherit a paragraph from.
+ * @param {string} unitKey @returns {number} 1..PARA.count
+ */
+function homeParaOf(unitKey) {
+  const key = String(unitKey);
+  if (key.indexOf("line:") === 0) {
+    const id = key.slice(5);
+    const rec = LINE_INDEX[id];
+    return rec ? paraOf(rec.sectionId, id) : PARA.slot;
+  }
+  if (key.indexOf("owner:") === 0) return PARA.slot;
+  // The disposition region has no single DOC section id — every disposition section is
+  // "disp_<id>" — so ask paraOf() with the prefix that decides it.
+  if (key === "sec:disposition") return paraOf("disp_", null);
+  if (key.indexOf("sec:") === 0) return paraOf(key.slice(4), null);
+  return PARA.slot;
+}
+
+/**
+ * The order DOC asks for: shell sections in declaration order, the stacked boxes in
+ * add order at the slot anchor, the disposition last. This mirrors assemble()'s
+ * traversal deliberately — that agreement is what makes a pristine draft render
+ * byte-identically. Unlike assemble() it does not drop collapsed or DOA-N/A sections
+ * and does not skip the disposition: this is the ORDER list, not the render filter,
+ * and every section has to hold a place in it whether or not it emits anything today.
+ * @param {Object} ctx @returns {Array<string>} unit keys
+ */
+function defaultTopOrder(ctx) {
+  const out = [];
+  const anchor = slotAnchorId();
+  const owners = (ctx.blockIds || []).map(function (id) { return "owner:" + id; });
+  let slotPlaced = false;
+  ((DOC.shell && DOC.shell.sections) || []).forEach(function (s) {
+    out.push("sec:" + s.id);
+    if (s.id === anchor) { out.push.apply(out, owners); slotPlaced = true; }
+  });
+  if (!slotPlaced) out.push.apply(out, owners);
+  out.push("sec:disposition");
+  return out;
+}
+
+/**
+ * Is this region still on the chart? A list stored against a box that was removed is
+ * kept rather than deleted: adding the box back puts its lines where the medic had
+ * them. Until then the region does not exist and its lines fall back to their homes.
+ * @param {string} regionKey @param {Object} d draft @returns {boolean}
+ */
+function regionExists(regionKey, d) {
+  const key = String(regionKey);
+  if (key === "sec:disposition") return true;
+  if (key.indexOf("owner:") === 0) return (d.blockIds || []).indexOf(key.slice(6)) >= 0;
+  if (key.indexOf("sec:") === 0) {
+    const id = key.slice(4);
+    return ((DOC.shell && DOC.shell.sections) || []).some(function (s) { return s.id === id; });
+  }
+  return false;
+}
+
+/**
+ * Where does each moved line actually live? One line key can survive in more than one
+ * stored list, so the FIRST list to claim it wins and later copies are ignored — top
+ * level first, then the region lists. Keys that can no longer be honoured are dropped
+ * here once instead of at every call site: lines DOC no longer declares, fork option
+ * lines (they ride with their fork, so they were never placeable), and every list
+ * belonging to a region that is not currently on the chart.
+ * @param {Object} d draft @returns {Map<string,string>} "line:<id>" -> regionKey | TOP_REGION
+ */
+function placementIndex(d) {
+  const place = new Map();
+  const claim = function (list, regionKey) {
+    (list || []).forEach(function (key) {
+      if (String(key).indexOf("line:") !== 0) return;
+      const id = String(key).slice(5);
+      if (!LINE_INDEX[id] || FORK_PARENT[id]) return;
+      if (!place.has(key)) place.set(key, regionKey);
+    });
+  };
+  claim(d.topOrder, TOP_REGION);
+  const lists = d.lineOrder || {};
+  Object.keys(lists).forEach(function (regionKey) {
+    if (!regionExists(regionKey, d)) return;
+    claim(lists[regionKey], regionKey);
+  });
+  return place;
+}
+
+/**
+ * Fold DOC's defaults back into a stored order without disturbing the arrangement.
+ * A default that is missing — a new section, a box just added to the stack, a line DOC
+ * grew after this region was frozen — is inserted immediately after its nearest
+ * PRECEDING default sibling that is already present, so it keeps the adjacency DOC
+ * declared for it; with nothing of its own preceding it, it goes to the front. Walking
+ * the defaults in order means several new neighbours stay in DOC's order among
+ * themselves. A stored order of nothing therefore reproduces the defaults exactly.
+ * @param {Array<string>} current @param {Array<string>} defaults @returns {Array<string>}
+ */
+function mergeDefaults(current, defaults) {
+  const out = current.slice();
+  let prev = null;
+  (defaults || []).forEach(function (key) {
+    if (out.indexOf(key) >= 0) { prev = key; return; }
+    const at = prev === null ? -1 : out.indexOf(prev);
+    out.splice(at + 1, 0, key);
+    prev = key;
+  });
+  return out;
+}
+
+/** A stored top-level entry survives only while the thing it names is still there. */
+function topEntryValid(key, ctx, defaults, place) {
+  const k = String(key);
+  if (k.indexOf("sec:") === 0) return defaults.indexOf(k) >= 0;
+  if (k.indexOf("owner:") === 0) return (ctx.blockIds || []).indexOf(k.slice(6)) >= 0;
+  if (k.indexOf("line:") === 0) return place.get(k) === TOP_REGION;
+  return false;
+}
+
+/**
+ * The top-level order in force right now: what the medic arranged, minus entries that
+ * no longer hold, plus every default the arrangement predates. A pristine draft gets
+ * defaultTopOrder() back untouched — the identity paragraphs() rests on.
+ * @param {Object} ctx @returns {Array<string>} unit keys; every "sec:" key is present
+ */
+function effectiveTopOrder(ctx) {
+  const d = ctx.d;
+  const defaults = defaultTopOrder(ctx);
+  if (!d.topOrder) return defaults;
+  const place = placementIndex(d);
+  const kept = [];
+  d.topOrder.forEach(function (key) {
+    if (kept.indexOf(key) >= 0) return;
+    if (!topEntryValid(key, ctx, defaults, place)) return;
+    kept.push(key);
+  });
+  return mergeDefaults(kept, defaults);
+}
+
+/**
+ * The lines DOC puts in a region, in DOC's order — the same walk the worksheet and the
+ * assembler make (ownerBox / ownerSections): a shell section's own top-level lines,
+ * the ACTIVE disposition's lines, or a box's active sub-block lines followed by its
+ * block-level lines. Forks are not recursed into, because a fork is one unit. The
+ * disposition picker is not a sentence and never appears here.
+ * @param {string} regionKey @param {Object} ctx @returns {Array<string>} line keys
+ */
+function regionDefaults(regionKey, ctx) {
+  const key = String(regionKey);
+  const keysOf = function (lines) {
+    return (lines || []).map(function (l) { return "line:" + l.id; });
+  };
+  if (key === "sec:disposition") {
+    const dsp = (DOC.dispositions || []).find(function (x) { return x.id === ctx.d.disposition; });
+    return dsp ? keysOf(dsp.lines) : [];
+  }
+  if (key.indexOf("sec:") === 0) {
+    const id = key.slice(4);
+    const s = ((DOC.shell && DOC.shell.sections) || []).find(function (x) { return x.id === id; });
+    return s ? keysOf(s.lines) : [];
+  }
+  if (key.indexOf("owner:") === 0) {
+    const res = resolveOwner(key.slice(6));
+    if (!res) return [];
+    let out = [];
+    (res.owner.subBlocks || []).forEach(function (sb) {
+      if (subActive(res.owner, sb)) out = out.concat(keysOf(sb.lines));
+    });
+    return out.concat(keysOf(res.owner.lines));
+  }
+  return [];
+}
+
+/**
+ * The lines living in a region right now, in order: the medic's arrangement for that
+ * region — minus anything since claimed by another region or dropped out of DOC — with
+ * DOC's own lines merged back in at the adjacency DOC declared for them.
+ * Eligibility is deliberately NOT consulted here. This is the order list, not the
+ * render filter: a line that emits nothing today still holds its place for the day it
+ * does, and the renderers and the assembler keep their own eligibility rules.
+ * @param {string} regionKey @param {Object} ctx
+ * @param {Map} [place] a placement scan to share, when the caller already made one
+ * @returns {Array<string>} line keys
+ */
+function regionUnits(regionKey, ctx, place) {
+  const d = ctx.d;
+  const pl = place || placementIndex(d);
+  const stored = (d.lineOrder || {})[regionKey] || [];
+  const kept = [];
+  stored.forEach(function (key) {
+    if (kept.indexOf(key) >= 0) return;
+    if (pl.get(key) !== regionKey) return;
+    kept.push(key);
+  });
+  // Defaults claimed by another region drop out entirely — they live there now, and
+  // they cannot anchor anything here either. Ones already kept stay in, as anchors.
+  const defaults = regionDefaults(regionKey, ctx).filter(function (key) {
+    return kept.indexOf(key) >= 0 || !pl.has(key);
+  });
+  return mergeDefaults(kept, defaults);
+}
+
+/**
+ * One integer per addressable unit, in the order the narrative reads: each top-level
+ * entry, then — where that entry is a region — the lines inside it. A region takes an
+ * ordinal of its own, which is what makes a box sortable as a box and what gives a line
+ * dropped at the very top of a region a neighbour above it to inherit from.
+ * @param {Object} ctx @returns {Map<string,number>} unitKey -> ordinal
+ */
+function globalUnitIndex(ctx) {
+  const place = placementIndex(ctx.d);
+  const map = new Map();
+  let n = 0;
+  effectiveTopOrder(ctx).forEach(function (key) {
+    if (!map.has(key)) map.set(key, n++);
+    if (String(key).indexOf("line:") === 0) return;      // a loose line has no region
+    regionUnits(key, ctx, place).forEach(function (lineKey) {
+      if (!map.has(lineKey)) map.set(lineKey, n++);
+    });
+  });
+  return map;
+}
+
+/**
+ * The paragraph a unit is in: its override, else its home. paragraphs() additionally
+ * lets a box's override stand in for the lines the box owns; this answers for one unit.
+ * @param {string} unitKey @param {Object} d draft @returns {number} 1..PARA.count
+ */
+function resolvedParaOf(unitKey, d) {
+  const over = d && d.paraOverrides ? d.paraOverrides[unitKey] : null;
+  return over || homeParaOf(unitKey);
+}
+
+/** Where a unit lives at this instant: the stored list that claims it, else its home. */
+function currentRegionOf(unitKey, d) {
+  if ((d.topOrder || []).indexOf(unitKey) >= 0) return TOP_REGION;
+  const lists = d.lineOrder || {};
+  const found = Object.keys(lists).find(function (rk) {
+    return (lists[rk] || []).indexOf(unitKey) >= 0;
+  });
+  if (found) return found;
+  if (String(unitKey).indexOf("line:") === 0) return homeRegionOf(String(unitKey).slice(5));
+  return TOP_REGION;                                     // a box only ever lives up top
+}
+
+/** Freeze one region's current order onto the draft, unless it is frozen already. */
+function materializeRegion(d, regionKey, ctx) {
+  if (!regionKey || regionKey === TOP_REGION) return;
+  if (!d.lineOrder) d.lineOrder = {};
+  if (d.lineOrder[regionKey]) return;
+  if (!regionExists(regionKey, d)) return;
+  d.lineOrder[regionKey] = regionUnits(regionKey, ctx);
+}
+
+/**
+ * With no paragraph asked for, a moved unit joins the one it landed against: the unit
+ * immediately above it in the new order, or the one below when it landed at the very
+ * top, or its own home when there is nothing else. Call this AFTER the move is
+ * committed — it reads the arrangement the move just wrote.
+ * A box is followed by its OWN lines, so the downward scan steps over them: the point
+ * is which neighbour the box joined, and its own contents are not a neighbour.
+ * @param {string} unitKey @param {Object} ctx @returns {number} 1..PARA.count
+ */
+function inheritedPara(unitKey, ctx) {
+  const order = Array.from(globalUnitIndex(ctx).keys());
+  const at = order.indexOf(unitKey);
+  if (at < 0) return homeParaOf(unitKey);
+  if (at > 0) return resolvedParaOf(order[at - 1], ctx.d);
+  const own = String(unitKey).indexOf("owner:") === 0 ? regionUnits(unitKey, ctx) : [];
+  for (let i = at + 1; i < order.length; i++) {
+    if (own.indexOf(order[i]) < 0) return resolvedParaOf(order[i], ctx.d);
+  }
+  return homeParaOf(unitKey);
+}
+
+/**
+ * Commit one drag. The caller decides where the unit landed; this records it and
+ * nothing else — no redraw, no save — so the caller keeps control of both.
+ *
+ * @param {{unitKey:string, toRegion:string, toIndex:number, adoptPara:?number}} move
+ *   unitKey    "line:<id>" or "owner:<id>". A box carries its whole region with it, so
+ *              it has nowhere to go but among the top-level units.
+ *   toRegion   a regionKey, or TOP_REGION ("__top__") for the top level.
+ *   toIndex    an index into the destination list AFTER the unit has been taken out of
+ *              wherever it was: 0 is first, the list's length is last. Stating it
+ *              post-removal is what makes a move within one list unambiguous.
+ *   adoptPara  the paragraph the caller wants, or null to inherit from the neighbours.
+ * @returns {boolean} whether anything moved
+ */
+function applyMove(move) {
+  if (!move || !move.unitKey) return false;
+  const key = String(move.unitKey);
+  const isOwner = key.indexOf("owner:") === 0;
+  const isLine = key.indexOf("line:") === 0;
+  if (!isOwner && !isLine) return false;
+  // A fork's option line has no place of its own to move to — it rides with its fork.
+  if (isLine && FORK_PARENT[key.slice(5)]) return false;
+  const ctx = context();
+  const d = ctx.d;
+  const to = move.toRegion || TOP_REGION;
+  if (isOwner && to !== TOP_REGION) return false;
+  if (to !== TOP_REGION && !regionExists(to, d)) return false;
+
+  // Freeze first, and only what this move touches: an untouched list stays absent so
+  // its region keeps following DOC, while the lists about to be rewritten have to be
+  // snapshots of what the medic is looking at, taken BEFORE anything shifts.
+  if (!d.topOrder) d.topOrder = effectiveTopOrder(ctx);
+  materializeRegion(d, currentRegionOf(key, d), ctx);
+  materializeRegion(d, to, ctx);
+
+  // Out of everywhere, not just out of where we think it was: a stale duplicate left in
+  // some other list would otherwise resurrect the unit at its old place.
+  d.topOrder = d.topOrder.filter(function (x) { return x !== key; });
+  Object.keys(d.lineOrder).forEach(function (rk) {
+    d.lineOrder[rk] = (d.lineOrder[rk] || []).filter(function (x) { return x !== key; });
+  });
+
+  const list = to === TOP_REGION ? d.topOrder : d.lineOrder[to];
+  let at = move.toIndex | 0;
+  if (!(at >= 0)) at = 0;
+  if (at > list.length) at = list.length;
+  list.splice(at, 0, key);
+
+  const adopted = move.adoptPara != null ? move.adoptPara : inheritedPara(key, ctx);
+  // Only a difference from DOC is worth storing; matching it again forgets the override.
+  if (adopted === homeParaOf(key)) delete d.paraOverrides[key];
+  else d.paraOverrides[key] = adopted;
+  return true;
+}
+
+/** Back to DOC's order, wholesale. Mutation only — no redraw, no save. */
+function resetOrder() {
+  const d = draft();
+  d.topOrder = null;
+  d.lineOrder = {};
+  d.paraOverrides = {};
+}
+
+/** @returns {boolean} has the medic arranged anything? (what a reset affordance asks) */
+function orderCustomized() {
+  const d = draft();
+  if (d.topOrder) return true;
+  if (Object.keys(d.lineOrder || {}).length) return true;
+  return Object.keys(d.paraOverrides || {}).length > 0;
+}
+
 /* -------------------------------------------------------------------------
    DEFAULTS — clinical content, signed off. An unset field that has a default
    is PROPOSED: it emits its default text faintly and counts against the copy
@@ -765,13 +1221,19 @@ const OWNER_FIELDS = Object.create(null);
 /** category name -> {type:"block"|"template", id} */
 const CATEGORY_INDEX = Object.create(null);
 
-function indexLines(lines, meta, fieldBag) {
+function indexLines(lines, meta, fieldBag, forkRoot) {
   (lines || []).forEach(function (line) {
     LINE_INDEX[line.id] = { line: line, ownerType: meta.ownerType, ownerId: meta.ownerId,
                             sectionId: meta.sectionId, sectionName: meta.sectionName };
+    // A fork's option lines are not units the medic can move: they ride with the
+    // OUTERMOST fork line, which is the one that occupies a place in the narrative.
+    // Record that ancestry here rather than re-walking DOC for it (see ORDERING).
+    if (forkRoot) FORK_PARENT[line.id] = forkRoot;
     collectFieldIds(line, fieldBag);
     if (line.kind === "fork") {
-      (line.options || []).forEach(function (o) { indexLines(o.lines, meta, fieldBag); });
+      (line.options || []).forEach(function (o) {
+        indexLines(o.lines, meta, fieldBag, forkRoot || line.id);
+      });
     }
   });
 }
@@ -836,12 +1298,16 @@ function makeDraft(label, unit) {
     // line-level attestations for structural proposals: tri attested-as-omit,
     // esc attested-as-not-fired. Field proposals are accepted into `values`.
     attested: {},
-    naSections: {}, ptContactMade: false, disposition: null, polish: null
+    naSections: {}, ptContactMade: false, disposition: null, polish: null,
+    // Order the medic arranged, if any (see ORDERING). A null topOrder is pristine:
+    // it means "follow DOC", which an empty array could not say.
+    topOrder: null, lineOrder: {}, paraOverrides: {}
   };
 }
 let state = { drafts: [makeDraft("Call")], activeDraft: 0 };
 /** UI-only, never persisted */
-const ui = { expanded: {}, open: {}, copyPending: false, polishWarned: false, focusKey: null, condSig: "" };
+const ui = { expanded: {}, open: {}, copyPending: false, polishWarned: false, focusKey: null, condSig: "",
+             dragging: false };
 
 function draft() { return state.drafts[state.activeDraft]; }
 function val(id) { return draft().values[id]; }
@@ -1289,19 +1755,68 @@ function joinRows(rows, paint) {
 }
 
 /**
- * Deal every emitted row into its paragraph, keeping assembly order within each.
+ * Deal every emitted row into its paragraph, in the order the medic arranged.
+ *
+ * Rows arrive in assembly order and each names the line that produced it; the ordering
+ * index (see ORDERING) says where that line's UNIT sits now. Sorting by that index —
+ * stably, so several rows from one unit keep assembly order between them — is the whole
+ * of what dragging a sentence does to the narrative.
+ *
+ * A PRISTINE draft is byte-identical to the old fixed order. With nothing stored,
+ * effectiveTopOrder() is defaultTopOrder() and every region is DOC's own list, and
+ * defaultTopOrder() mirrors assemble()'s traversal exactly (shell sections in DOC order,
+ * the slot at its anchor, disposition last). Ordinals therefore only ever rise along
+ * assembly order, and a stable sort cannot move anything.
+ *
+ * A row whose unit has no ordinal at all inherits the nearest preceding row that had
+ * one, which holds assembleSlot()'s orphaned fired-escalation rows — their box is no
+ * longer stacked, so it is in no order — exactly where they render.
  * @returns {Array<Array<Object>>} PARA.count buckets, in order (empties included)
  */
 function paragraphs(asm) {
-  const buckets = [];
-  for (let i = 0; i < PARA.count; i++) buckets.push([]);
-  asm.sections.forEach(function (s) {
+  const d = draft();
+  const index = globalUnitIndex(context());
+  const overrides = d.paraOverrides || {};
+  const rows = [];
+  let carried = -1;                        // before any known row: sorts to the front
+  (asm.sections || []).forEach(function (s) {
     s.lines.forEach(function (l) {
-      const i = (l.para || PARA.slot) - 1;
-      buckets[i >= 0 && i < buckets.length ? i : PARA.slot - 1].push(l);
+      const unitId = FORK_PARENT[l.lineId] || l.lineId;
+      const at = index.get("line:" + unitId);
+      if (at != null) carried = at;
+      rows.push({ row: l, sort: at != null ? at : carried, seq: rows.length,
+                  para: rowPara(unitId, l, overrides) });
     });
   });
+  // ES2020's sort IS stable; the tiebreak is written out anyway because assembly order
+  // is load-bearing here, not something to inherit from the engine's good behaviour.
+  rows.sort(function (a, b) { return (a.sort - b.sort) || (a.seq - b.seq); });
+
+  const buckets = [];
+  for (let i = 0; i < PARA.count; i++) buckets.push([]);
+  rows.forEach(function (r) {
+    const i = r.para - 1;
+    buckets[i >= 0 && i < buckets.length ? i : PARA.slot - 1].push(r.row);
+  });
   return buckets;
+}
+/**
+ * Which paragraph does one row land in? The line's own override wins. Failing that, a
+ * line that BELONGS to a box follows the box's override, so moving a box takes its
+ * sentences with it. Failing that, the paragraph the row was stamped with at render
+ * time — the row's own answer, not a re-derived one, so nothing can drift from it.
+ * @param {string} unitId @param {Object} row @param {Object} overrides
+ * @returns {number} a paragraph number, clamped by the caller
+ */
+function rowPara(unitId, row, overrides) {
+  const own = overrides["line:" + unitId];
+  if (own) return own;
+  const rec = LINE_INDEX[unitId];
+  if (rec && (rec.ownerType === "block" || rec.ownerType === "template")) {
+    const box = overrides["owner:" + rec.ownerId];
+    if (box) return box;
+  }
+  return row.para || PARA.slot;
 }
 
 /**
@@ -1414,6 +1929,7 @@ function renderTopbar() {
   const chip = document.getElementById("draft-chip");
   chip.hidden = state.drafts.length < 2;
   chip.textContent = d.label;
+  document.getElementById("reset-order").hidden = !orderCustomized();
   paintCopyLabel();
 }
 
@@ -1447,20 +1963,100 @@ function lineDeferred(line, ctx) {
   return line.cond ? !ctx.cond[line.cond] : true;
 }
 
+/**
+ * The paragraph a unit's BADGE shows: its own override, else — for a line owned by a
+ * block/template — its box's override, else its home. This is rowPara()'s own → box →
+ * fallback shape, read for a unit that has no assembled row to fall back to; the
+ * fallback here is homeParaOf() rather than an assembled row's stamped paragraph.
+ * Not resolvedParaOf(): that answers for one unit only and deliberately skips the box
+ * fallback (see its own docstring), which a line badge needs and an owner badge is
+ * unaffected by (an "owner:" key has no box of its own to inherit from either way).
+ * @param {string} unitKey @param {Object} d draft @returns {number} 1..PARA.count
+ */
+function unitBadgePara(unitKey, d) {
+  const overrides = (d && d.paraOverrides) || {};
+  const own = overrides[unitKey];
+  if (own) return own;
+  if (String(unitKey).indexOf("line:") === 0) {
+    const rec = LINE_INDEX[unitKey.slice(5)];
+    if (rec && (rec.ownerType === "block" || rec.ownerType === "template")) {
+      const box = overrides["owner:" + rec.ownerId];
+      if (box) return box;
+    }
+  }
+  return homeParaOf(unitKey);
+}
+
+/** The drag handle every orderable unit gets: a real button (keyboard-reachable),
+ *  hover/focus-revealed (see CSS), its dot grid drawn in CSS rather than an asset.
+ *  No click behavior yet — piece 4 wires the drag itself. */
+function makeHandle(label) {
+  const b = el("button", "ws-handle");
+  b.type = "button";
+  b.setAttribute("aria-label", label);
+  b.appendChild(el("span", "ws-dots"));
+  return b;
+}
+
+/** The "¶N" pill next to a unit: amber once the unit no longer answers to its home
+ *  paragraph, so a dragged sentence or box reads as moved at a glance. */
+function makeParaBadge(unitKey, d) {
+  const para = unitBadgePara(unitKey, d);
+  const cls = "ws-para" + (para !== homeParaOf(unitKey) ? " ws-para-moved" : "");
+  return el("span", cls, "¶" + para);
+}
+
+/**
+ * Wrap one draggable LINE unit: a handle in a left gutter, its rows — everything
+ * lineRow produces for it, including a fork's own .ws-sub — in the body, and a
+ * paragraph badge. Not used for boxes: a box's handle/badge live on its own
+ * .ws-sec/.ws-sechead instead (see ownerBox). Only builds DOM; piece 4 wires the drag.
+ * @param {Element} host @param {string} unitKey "line:<id>" @param {Object} ctx
+ * @param {string} [extraClass] e.g. "ws-loose" for a unit rendered with no section box
+ * @returns {Element} the body node — render the unit's rows into this
+ */
+function unitWrap(host, unitKey, ctx, extraClass) {
+  const wrap = el("div", "ws-line" + (extraClass ? " " + extraClass : ""));
+  wrap.dataset.unit = unitKey;
+  wrap.appendChild(makeHandle("Reorder sentence"));
+  const body = el("div", "ws-line-body");
+  wrap.appendChild(body);
+  wrap.appendChild(makeParaBadge(unitKey, ctx.d));
+  host.appendChild(wrap);
+  return body;
+}
+
+/**
+ * Walk the medic's arranged order top to bottom: a fixed shell section, the ONE owner
+ * box a "owner:" entry names, the disposition section, or a line dragged all the way to
+ * the top level with no section of its own. A pristine draft's effectiveTopOrder() is
+ * defaultTopOrder(), which mirrors this exactly (see ORDERING), so this reproduces the
+ * old fixed walk (shell sections → slot at anchor → disposition) byte-for-byte.
+ */
 function renderWorksheet() {
+  if (ui.dragging) return;      // a rebuild mid-drag would destroy the dragged node
   const ctx = context();
   const ws = document.getElementById("worksheet");
   const hadFocus = ws.contains(document.activeElement);
   const caret = textCaret(document.activeElement);
   ws.innerHTML = "";
-  const anchor = slotAnchorId();
-  let slotPlaced = false;
-  ((DOC.shell && DOC.shell.sections) || []).forEach(function (s) {
-    shellSection(ws, s, ctx);
-    if (s.id === anchor) { ownerRows(ws, ctx); slotPlaced = true; }
+  const ownerByKey = Object.create(null);
+  ctx.owners.forEach(function (o) { ownerByKey["owner:" + o.owner.id] = o; });
+  effectiveTopOrder(ctx).forEach(function (key) {
+    if (key === "sec:disposition") {
+      if (!ctx.doaActive) dispositionSection(ws, ctx);
+    } else if (key.indexOf("sec:") === 0) {
+      const s = ((DOC.shell && DOC.shell.sections) || [])
+        .find(function (x) { return x.id === key.slice(4); });
+      if (s) shellSection(ws, s, ctx);
+    } else if (key.indexOf("owner:") === 0) {
+      const o = ownerByKey[key];
+      if (o) ownerBox(ws, o, ctx);
+    } else if (key.indexOf("line:") === 0) {
+      const rec = LINE_INDEX[key.slice(5)];
+      if (rec) lineRow(unitWrap(ws, key, ctx, "ws-loose"), rec.line, ctx);
+    }
   });
-  if (!slotPlaced) ownerRows(ws, ctx);
-  if (!ctx.doaActive) dispositionSection(ws, ctx);
   ui.condSig = condSignature(ctx);
   settleFocus();
   if (hadFocus) restoreWorksheetFocus(caret);
@@ -1503,45 +2099,78 @@ function shellSection(host, s, ctx) {
     if (d.naSections[s.id]) { sec.classList.add("ws-na"); sec._rows.inert = true; }
   }
   if (s.note) sec._rows.appendChild(el("div", "ws-note", s.note));
-  (s.lines || []).forEach(function (l) { lineRow(sec._rows, l, ctx); });
+  regionUnits("sec:" + s.id, ctx).forEach(function (key) {
+    const rec = LINE_INDEX[key.slice(5)];
+    if (rec) lineRow(unitWrap(sec._rows, key, ctx), rec.line, ctx);
+  });
 }
 
-/** One section per stacked owner, in add order — the assembler's order exactly. */
-function ownerRows(host, ctx) {
-  ctx.owners.forEach(function (o) {
-    const owner = o.owner, kind = o.kind;
-    const sec = sectionNode(host, kind + "_" + owner.id, owner.name);
-    const x = el("button", "rm-block", "×");
-    x.type = "button"; x.title = "remove " + kind;
-    x.addEventListener("click", function () { removeBlock(owner.id); });
-    sec._tools.appendChild(x);
-    if (owner.intro) sec._rows.appendChild(el("div", "ws-note", owner.intro));
-    if (owner.subBlocks && owner.subBlocks.length) {
-      const row = el("div", "sub-row");
-      const multi = owner.subBlocks.some(function (sb) { return sb.multi; });
-      owner.subBlocks.forEach(function (sb) {
-        const b = el("button", "sub-pill" + (subActive(owner, sb) ? " on" : ""), sb.name);
-        b.type = "button";
-        b.addEventListener("click", function () { toggleSub(owner, sb, multi); });
-        row.appendChild(b);
-      });
-      sec._rows.appendChild(row);
-    }
-    (owner.subBlocks || []).forEach(function (sb) {
-      if (!subActive(owner, sb)) return;
-      sec._rows.appendChild(el("div", "ws-subhead", sb.name));
-      (sb.lines || []).forEach(function (l) { lineRow(sec._rows, l, ctx); });
-    });
-    (owner.lines || []).forEach(function (l) { lineRow(sec._rows, l, ctx); });
-    if (owner.handoff) maybeHandoffButton(sec._rows, owner, ctx);
+/** lineId -> the sub-block that declares it, for one owner. Lets the box's line loop
+ *  know when to open a new .ws-subhead without re-scanning subBlocks per line. */
+function subBlockMap(owner) {
+  const map = Object.create(null);
+  (owner.subBlocks || []).forEach(function (sb) {
+    (sb.lines || []).forEach(function (l) { map[l.id] = sb; });
   });
+  return map;
+}
+
+/**
+ * One box for a single stacked owner (block or template): chrome (remove ×, intro
+ * note, sub-block pill row, handoff button) plus its lines in the medic's current
+ * order. The box is itself a draggable top-level unit — data-unit/handle/badge live
+ * on its .ws-sec/.ws-sechead, not inside a .ws-line (see unitWrap).
+ */
+function ownerBox(host, ownerRec, ctx) {
+  const owner = ownerRec.owner, kind = ownerRec.kind;
+  const unitKey = "owner:" + owner.id;
+  const sec = sectionNode(host, kind + "_" + owner.id, owner.name);
+  sec.dataset.unit = unitKey;
+  const head = sec.querySelector(".ws-sechead");
+  head.insertBefore(makeHandle("Reorder block"), head.firstChild);
+  sec._tools.appendChild(makeParaBadge(unitKey, ctx.d));
+  const x = el("button", "rm-block", "×");
+  x.type = "button"; x.title = "remove " + kind;
+  x.addEventListener("click", function () { removeBlock(owner.id); });
+  sec._tools.appendChild(x);
+  if (owner.intro) sec._rows.appendChild(el("div", "ws-note", owner.intro));
+  if (owner.subBlocks && owner.subBlocks.length) {
+    const row = el("div", "sub-row");
+    const multi = owner.subBlocks.some(function (sb) { return sb.multi; });
+    owner.subBlocks.forEach(function (sb) {
+      const b = el("button", "sub-pill" + (subActive(owner, sb) ? " on" : ""), sb.name);
+      b.type = "button";
+      b.addEventListener("click", function () { toggleSub(owner, sb, multi); });
+      row.appendChild(b);
+    });
+    sec._rows.appendChild(row);
+  }
+  // A subhead marks entry into a sub-block's run of lines and dedups across
+  // consecutive lines from the same one; owner.lines and any foreign line dragged
+  // in here have no sub-block, so they never open one (matches the old fixed walk).
+  const sbOf = subBlockMap(owner);
+  let prevSb;
+  regionUnits(unitKey, ctx).forEach(function (key) {
+    const id = key.slice(5);
+    const rec = LINE_INDEX[id];
+    if (!rec) return;
+    const sb = sbOf[id] || null;
+    if (sb !== prevSb) {
+      if (sb) sec._rows.appendChild(el("div", "ws-subhead", sb.name));
+      prevSb = sb;
+    }
+    lineRow(unitWrap(sec._rows, key, ctx), rec.line, ctx);
+  });
+  if (owner.handoff) maybeHandoffButton(sec._rows, owner, ctx);
 }
 
 function dispositionSection(host, ctx) {
   const sec = sectionNode(host, "disposition", "Disposition");
   lineRow(sec._rows, DISPO_LINE, ctx);
-  const dsp = (DOC.dispositions || []).find(function (x) { return x.id === ctx.d.disposition; });
-  if (dsp) (dsp.lines || []).forEach(function (l) { lineRow(sec._rows, l, ctx); });
+  regionUnits("sec:disposition", ctx).forEach(function (key) {
+    const rec = LINE_INDEX[key.slice(5)];
+    if (rec) lineRow(unitWrap(sec._rows, key, ctx), rec.line, ctx);
+  });
 }
 
 /* ---- rows and fields ---- */
@@ -2410,6 +3039,13 @@ function removeBlock(id) {
     const d = draft();
     d.blockIds = d.blockIds.filter(function (x) { return x !== id; });
     delete d.subs[id];
+    // The box stops being an orderable unit, so its top-level place, its own line order
+    // and its paragraph go with it. Lines of this box that the medic had dragged into
+    // OTHER regions are left stored exactly where they are: the assembler simply stops
+    // emitting them, and adding the box back restores them where the medic had them.
+    if (d.topOrder) d.topOrder = d.topOrder.filter(function (x) { return x !== "owner:" + id; });
+    delete d.lineOrder["owner:" + id];
+    delete d.paraOverrides["owner:" + id];
     structuralEdit();
   };
   if (!blockHasValues(id)) { drop(); return; }
@@ -2719,7 +3355,11 @@ function restore() {
       const m = Object.assign(base, d, {
         values: d.values || {}, forks: d.forks || {}, esc: d.esc || {},
         attested: d.attested || {},          // drafts saved before attestations existed
-        naSections: d.naSections || {}, subs: d.subs || {}, blockIds: d.blockIds || []
+        naSections: d.naSections || {}, subs: d.subs || {}, blockIds: d.blockIds || [],
+        // Drafts saved before ordering existed are pristine by definition: no stored
+        // order at all, which is exactly what null / empty say (see ORDERING).
+        topOrder: d.topOrder || null, lineOrder: d.lineOrder || {},
+        paraOverrides: d.paraOverrides || {}
       });
       // Migrate pre-owner-stack drafts: the old activeTemplate / activeAddendum pair
       // becomes the tail of the one owner stack, in that order.
@@ -2792,6 +3432,472 @@ function toggleAddBlock() {
 
 /* ============================ wiring ============================ */
 
+/* ============================ DRAG ============================ */
+/*
+ * Turns a gesture into one call to applyMove() (see ORDERING) plus the visual
+ * choreography — lift, follow, settle — that makes the result read as a direct
+ * manipulation rather than a jump cut. Two input paths converge on the same
+ * {unitKey, toRegion, toIndex} shape applyMove() already expects:
+ *   pointer   grab a handle, drag a placeholder around, release to commit or Escape
+ *             to cancel (mirrors the accepted mockup's interaction).
+ *   keyboard  grab a handle with Enter/Space, walk it one slot at a time with the
+ *             arrows, committing on every step.
+ * Nothing here mutates the draft directly — applyMove() does that — and nothing here
+ * decides paragraphs — adoptPara is always null, leaving that to the engine's own
+ * neighbour inheritance (see applyMove's docstring).
+ */
+
+let dragState = null;      // non-null only while a pointer drag is in progress
+let scrollRAF = null;      // the auto-scroll loop's requestAnimationFrame handle
+let grabbedHandle = null;  // the .ws-handle currently in keyboard "grabbed" mode, if any
+
+/**
+ * The regionKey a DOM node's position names: an owner box's whole .ws-sec (checked
+ * first, since a box's .ws-sec ALSO carries data-section — see ownerBox), a fixed
+ * shell/disposition section, or TOP_REGION once the node has climbed out of every
+ * .ws-sec (a box dropped at the top level, or a line with no section of its own).
+ * Works on any node — a placeholder mid-drag, or a rendered unit for the keyboard
+ * path — because it only ever reads ancestry, never drag state.
+ * @param {Element} node @returns {string} a regionKey, or TOP_REGION
+ */
+function dropRegionOf(node) {
+  const owner = node.closest('[data-unit^="owner:"]');
+  if (owner) return owner.dataset.unit;
+  const sec = node.closest(".ws-sec[data-section]");
+  if (sec) return sec.dataset.section === "disposition" ? "sec:disposition" : "sec:" + sec.dataset.section;
+  return TOP_REGION;
+}
+
+/** The unit key a top-level child of #worksheet names: a box or loose line's own
+ *  data-unit, else the fixed section it is (disposition needs its own translation;
+ *  every other section's id IS its regionKey suffix). A box carries both data-unit
+ *  and data-section (see ownerBox) — data-unit wins by being checked first. */
+function topKeyOf(node) {
+  if (node.dataset.unit) return node.dataset.unit;
+  return node.dataset.section === "disposition" ? "sec:disposition" : "sec:" + node.dataset.section;
+}
+
+/** The next LINE unit's key after `node` in DOM order — not necessarily in the same
+ *  region, which is exactly how a drop at a region's edge migrates a line across the
+ *  boundary. Null past the last line on the worksheet, which means "drop is last". */
+function nextLineKey(node) {
+  let n = node.nextElementSibling;
+  while (n) {
+    if (n.matches(".ws-line[data-unit]")) return n.dataset.unit;
+    n = n.nextElementSibling;
+  }
+  return null;
+}
+
+/** The next top-level sibling's key after `node` — a box, a loose line, or a fixed
+ *  section (a box may sit next to any of them; a box itself only ever lives at the
+ *  top — see applyMove's TOP_REGION rule). Null past the last top-level child. */
+function nextTopKey(node) {
+  let n = node.nextElementSibling;
+  while (n) {
+    if (n.matches(".ws-sec, .ws-line.ws-loose")) return topKeyOf(n);
+    n = n.nextElementSibling;
+  }
+  return null;
+}
+
+/** Every LINE unit on the worksheet that could receive the drop — everything except
+ *  the one being dragged. A fresh querySelectorAll on every move is fine at this
+ *  scale (a single narrative's worth of rows), and re-scanning each time means a
+ *  region that just changed shape (auto-scroll revealed new rows) is never stale. */
+function lineCandidates() {
+  const all = document.querySelectorAll("#worksheet .ws-line[data-unit]");
+  const out = [];
+  for (let i = 0; i < all.length; i++) {
+    if (all[i] !== dragState.unitEl) out.push(all[i]);
+  }
+  return out;
+}
+
+/** Every top-level child a dragged BOX could land next to: other boxes and loose
+ *  lines, never a fixed section's own .ws-rows (a box only ever lives at the top). */
+function boxCandidates() {
+  const ws = document.getElementById("worksheet");
+  const out = [];
+  for (let i = 0; i < ws.children.length; i++) {
+    const c = ws.children[i];
+    if (c === dragState.unitEl || c === dragState.placeholder) continue;
+    if (c.matches(".ws-sec, .ws-line.ws-loose")) out.push(c);
+  }
+  return out;
+}
+
+/** The .ws-rows the pointer sits over vertically, if any. Used only to catch a
+ *  region the midpoint scan has no local candidate to anchor on (see
+ *  updateLineSlot) — every other placement decision comes from the candidates
+ *  themselves, not from geometry against the container. */
+function rowsUnderPointer(clientY) {
+  const all = document.querySelectorAll("#worksheet .ws-rows");
+  for (let i = 0; i < all.length; i++) {
+    const r = all[i].getBoundingClientRect();
+    if (clientY >= r.top && clientY <= r.bottom) return all[i];
+  }
+  return null;
+}
+
+/** Move the placeholder to sit immediately before `before` (or, with `before` null,
+ *  at the end of `parent`) — but only when it isn't sitting there already. Skipping
+ *  the redundant write matters because this runs on every pointermove and every
+ *  auto-scroll frame; inserting a node exactly where it already is is still a
+ *  mutation (and a reflow) as far as the browser is concerned. */
+function placeSlot(parent, before) {
+  const ph = dragState.placeholder;
+  if (ph.parentNode === parent && ph.nextSibling === before) return;
+  parent.insertBefore(ph, before || null);
+}
+
+/**
+ * Where would a LINE land right now? First, the midpoint rule: the first candidate
+ * whose vertical centre is below the pointer wins, and the placeholder goes
+ * immediately before it; past the last candidate, the placeholder goes after it.
+ * Then a check the pure midpoint rule can't make on its own: if the pointer sits over
+ * some section's rows and NONE of that section's own lines were among the
+ * candidates (an empty region, or the disposition section before a disposition is
+ * picked, whose only content is the unwrapped picker row), land there instead. That
+ * is the one case where "nearest candidate globally" and "the region visually under
+ * the pointer" disagree.
+ */
+function updateLineSlot(clientY) {
+  const candidates = lineCandidates();
+  let target = null;
+  for (let i = 0; i < candidates.length; i++) {
+    const r = candidates[i].getBoundingClientRect();
+    if (clientY < (r.top + r.bottom) / 2) { target = candidates[i]; break; }
+  }
+  const hovered = rowsUnderPointer(clientY);
+  if (hovered && !candidates.some(function (c) { return hovered.contains(c); })) {
+    placeSlot(hovered, null);
+    return;
+  }
+  if (target) { placeSlot(target.parentNode, target); return; }
+  if (candidates.length) {
+    const last = candidates[candidates.length - 1];
+    placeSlot(last.parentNode, last.nextSibling);
+  }
+}
+
+/** Where would a BOX land right now? Same midpoint rule as updateLineSlot, but over
+ *  top-level children only — a box never enters a section's rows. */
+function updateBoxSlot(clientY) {
+  const ws = document.getElementById("worksheet");
+  const candidates = boxCandidates();
+  let target = null;
+  for (let i = 0; i < candidates.length; i++) {
+    const r = candidates[i].getBoundingClientRect();
+    if (clientY < (r.top + r.bottom) / 2) { target = candidates[i]; break; }
+  }
+  placeSlot(ws, target || null);
+}
+
+function updateDropSlot(clientY) {
+  if (dragState.isLine) updateLineSlot(clientY); else updateBoxSlot(clientY);
+}
+
+/* ---- auto-scroll ---- */
+
+const DRAG_EDGE = 56, DRAG_SCROLL_MAX = 14;
+
+function stopAutoScroll() {
+  if (scrollRAF) { cancelAnimationFrame(scrollRAF); scrollRAF = null; }
+}
+
+/** Scroll the WINDOW (the worksheet flows with the page) while the pointer sits
+ *  within DRAG_EDGE of the top or bottom, at a step proportional to how deep into
+ *  the zone it is, capped at DRAG_SCROLL_MAX per frame. Re-running the slot update
+ *  each scrolled frame matters here specifically: rows keep flowing past a pointer
+ *  that itself never moves, so without this the placeholder would freeze at
+ *  wherever the last real pointermove left it. */
+function startAutoScroll() {
+  if (scrollRAF) return;
+  const step = function () {
+    if (!dragState) { scrollRAF = null; return; }
+    const y = dragState.lastY, vh = window.innerHeight;
+    let delta = 0;
+    if (y < DRAG_EDGE) delta = -DRAG_SCROLL_MAX * (DRAG_EDGE - y) / DRAG_EDGE;
+    else if (y > vh - DRAG_EDGE) delta = DRAG_SCROLL_MAX * (y - (vh - DRAG_EDGE)) / DRAG_EDGE;
+    if (!delta) { scrollRAF = null; return; }
+    window.scrollBy(0, delta);
+    updateDropSlot(y);
+    scrollRAF = requestAnimationFrame(step);
+  };
+  scrollRAF = requestAnimationFrame(step);
+}
+
+/* ---- pointer drag ---- */
+
+/** The one delegated grab point for every handle on the worksheet. Only a
+ *  primary-button press on a handle, with no drag already in progress, starts
+ *  anything; a handle inside an inert (.ws-na) section never receives the
+ *  pointerdown at all (native `inert` blocks it), so there is nothing to guard
+ *  there beyond simply not crashing on the absence of an event. */
+function onHandlePointerDown(e) {
+  if (dragState || e.button !== 0) return;
+  const handle = e.target.closest ? e.target.closest(".ws-handle") : null;
+  if (!handle) return;
+  const unitEl = handle.closest("[data-unit]");
+  if (!unitEl) return;
+  e.preventDefault();
+  releaseGrabbed();                    // a pointer drag supersedes any keyboard grab
+  handle.setPointerCapture(e.pointerId);
+
+  const ws = document.getElementById("worksheet");
+  const wsRect = ws.getBoundingClientRect();
+  const rect = unitEl.getBoundingClientRect();
+  const unitKey = unitEl.dataset.unit;
+  const isLine = unitEl.classList.contains("ws-line");
+
+  // Recorded now, compared against at drop time: the toIndex that would leave the
+  // unit exactly where it already is (see finishDrag's "did anything change" guard).
+  const ctx = context();
+  const originRegion = currentRegionOf(unitKey, ctx.d);
+  const originIndex = (originRegion === TOP_REGION ? effectiveTopOrder(ctx) : regionUnits(originRegion, ctx))
+    .indexOf(unitKey);
+
+  const placeholder = el("div", "ws-drop-slot");
+  placeholder.style.height = rect.height + "px";
+  unitEl.parentNode.insertBefore(placeholder, unitEl);
+
+  const originLeft = rect.left - wsRect.left, originTop = rect.top - wsRect.top;
+  unitEl.classList.add("ws-lifted");
+  unitEl.style.width = rect.width + "px";
+  unitEl.style.left = originLeft + "px";
+  unitEl.style.top = originTop + "px";
+  unitEl.style.transform = "translate(2px, 0px) scale(1.01)";
+
+  document.body.classList.add("ws-dragging");
+  ui.dragging = true;
+
+  dragState = {
+    handle: handle, unitEl: unitEl, placeholder: placeholder,
+    unitKey: unitKey, isLine: isLine, pointerId: e.pointerId,
+    startY: e.clientY, lastY: e.clientY,
+    originLeft: originLeft, originTop: originTop,
+    originRegion: originRegion, originIndex: originIndex
+  };
+
+  handle.addEventListener("pointermove", onHandlePointerMove);
+  handle.addEventListener("pointerup", onHandlePointerUp);
+  handle.addEventListener("pointercancel", onHandlePointerUp);
+  document.addEventListener("keydown", onDragEscape, true);
+}
+
+function onHandlePointerMove(e) {
+  if (!dragState || e.pointerId !== dragState.pointerId) return;
+  dragState.lastY = e.clientY;
+  const dy = e.clientY - dragState.startY;
+  dragState.unitEl.style.transform = "translate(2px, " + dy + "px) scale(1.01)";
+  updateDropSlot(e.clientY);
+  startAutoScroll();
+}
+
+function onHandlePointerUp(e) {
+  if (!dragState || e.pointerId !== dragState.pointerId) return;
+  const ds = dragState;
+  detachDragListeners(ds);
+  settleDrag(ds, false);
+}
+
+/** Wired only while a drag is live (see onHandlePointerDown / detachDragListeners),
+ *  on document rather than the handle: focus may not even be on the handle (a
+ *  pointerdown's default focusing action was prevented), so the handle alone would
+ *  miss the keypress. Capture phase so this always runs before anything else
+ *  (a modal's own Escape handling, in particular) gets a look at the same event. */
+function onDragEscape(e) {
+  if (!dragState || e.key !== "Escape") return;
+  e.stopPropagation();
+  const ds = dragState;
+  detachDragListeners(ds);
+  settleDrag(ds, true);
+}
+
+function detachDragListeners(ds) {
+  ds.handle.removeEventListener("pointermove", onHandlePointerMove);
+  ds.handle.removeEventListener("pointerup", onHandlePointerUp);
+  ds.handle.removeEventListener("pointercancel", onHandlePointerUp);
+  document.removeEventListener("keydown", onDragEscape, true);
+  stopAutoScroll();
+}
+
+/**
+ * The "fall back in" settle: animate left/top/transform to the target rect, then
+ * commit. `cancelled` targets the ORIGIN rect recorded at grab (Escape); otherwise
+ * it targets wherever the placeholder ended up. A transitionend on the transform
+ * property ends the animation; a timer just past the transition's own duration is
+ * the backstop for whenever that event doesn't arrive (reduced motion, a start
+ * position identical to the end position).
+ */
+function settleDrag(ds, cancelled) {
+  const ws = document.getElementById("worksheet");
+  const wsRect = ws.getBoundingClientRect();
+  let toLeft = ds.originLeft, toTop = ds.originTop;
+  if (!cancelled) {
+    const r = ds.placeholder.getBoundingClientRect();
+    toLeft = r.left - wsRect.left;
+    toTop = r.top - wsRect.top;
+  }
+  ds.unitEl.style.transition = "left .18s ease, top .18s ease, transform .18s ease";
+  ds.unitEl.getBoundingClientRect();    // flush layout so the transition has a start point
+  ds.unitEl.style.left = toLeft + "px";
+  ds.unitEl.style.top = toTop + "px";
+  ds.unitEl.style.transform = "none";
+
+  let settled = false;
+  const timer = setTimeout(finish, 220);
+  function finish(ev) {
+    if (settled || (ev && ev.propertyName !== "transform")) return;
+    settled = true;
+    clearTimeout(timer);
+    ds.unitEl.removeEventListener("transitionend", finish);
+    finishDrag(ds, cancelled);
+  }
+  ds.unitEl.addEventListener("transitionend", finish);
+}
+
+/** Compute where the drop lands, restore the DOM enough not to confuse the renderer
+ *  (it is about to be fully rebuilt either way), then commit — but only when the
+ *  drop actually moved something: picking a unit up and putting it back down exactly
+ *  where it was must not "customize" the order (which would reveal Reset order for
+ *  no visible change). */
+function finishDrag(ds, cancelled) {
+  let toRegion = null, toIndex = 0, changed = false;
+  if (!cancelled) {
+    toRegion = dropRegionOf(ds.placeholder);
+    toIndex = dropIndexOf(ds, toRegion);
+    changed = toRegion !== ds.originRegion || toIndex !== ds.originIndex;
+  }
+
+  if (ds.placeholder.parentNode) ds.placeholder.parentNode.removeChild(ds.placeholder);
+  ds.unitEl.classList.remove("ws-lifted");
+  ds.unitEl.style.cssText = "";
+  document.body.classList.remove("ws-dragging");
+  ui.dragging = false;
+  try { ds.handle.releasePointerCapture(ds.pointerId); } catch (err) { /* already released */ }
+  dragState = null;
+
+  const moved = changed && applyMove({ unitKey: ds.unitKey, toRegion: toRegion, toIndex: toIndex, adoptPara: null });
+  if (moved) { structuralEdit(); scheduleSave(); }
+  else renderWorksheet();
+}
+
+/** The index applyMove() wants: the destination list's position AFTER the dragged
+ *  unit is removed. Found from the NEXT unit key after the placeholder, not from
+ *  counting DOM children (a hidden order entry would skew a plain count). */
+function dropIndexOf(ds, toRegion) {
+  const ctx = context();
+  const list = (toRegion === TOP_REGION ? effectiveTopOrder(ctx) : regionUnits(toRegion, ctx))
+    .filter(function (k) { return k !== ds.unitKey; });
+  const nextKey = ds.isLine ? nextLineKey(ds.placeholder) : nextTopKey(ds.placeholder);
+  const at = nextKey ? list.indexOf(nextKey) : -1;
+  return at >= 0 ? at : list.length;
+}
+
+/* ---- keyboard reorder ---- */
+
+/** Grab or release one handle's keyboard-reorder state, keeping it exclusive: only
+ *  one unit reads as "grabbed" at a time, so a stray Enter somewhere else can never
+ *  leave a unit looking lifted while the arrows have moved on to a different one. */
+function setGrabbed(handle, unitEl, on) {
+  if (on && grabbedHandle && grabbedHandle !== handle) releaseGrabbed();
+  handle.setAttribute("aria-pressed", on ? "true" : "false");
+  unitEl.classList.toggle("ws-kbgrab", on);
+  grabbedHandle = on ? handle : null;
+}
+
+function releaseGrabbed() {
+  if (!grabbedHandle) return;
+  grabbedHandle.setAttribute("aria-pressed", "false");
+  const u = grabbedHandle.closest("[data-unit]");
+  if (u) u.classList.remove("ws-kbgrab");
+  grabbedHandle = null;
+}
+
+/**
+ * Keyboard parity for the drag, delegated on #worksheet like onWorksheetKey — the
+ * two never overlap in practice (a handle is never inside a .ws-field), but every
+ * key this handler acts on is stopped from bubbling regardless, so nothing above it
+ * ever double-reacts to the same press.
+ * Enter/Space toggle grabbed; while grabbed, arrows move one slot and commit
+ * immediately, Escape or Enter again releases. Not grabbed: arrows and Tab are left
+ * alone entirely (default scroll / normal tab order).
+ */
+function onHandleKey(e) {
+  const handle = e.target.closest ? e.target.closest(".ws-handle") : null;
+  if (!handle) return;
+  const unitEl = handle.closest("[data-unit]");
+  if (!unitEl) return;
+  const grabbed = handle.getAttribute("aria-pressed") === "true";
+
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault(); e.stopPropagation();
+    // key-repeat on a held Enter/Space would otherwise toggle grabbed on/off at OS
+    // repeat rate; the arrows get no such guard — repeat-to-move several slots is
+    // the behavior a held arrow key should have.
+    if (!e.repeat) setGrabbed(handle, unitEl, !grabbed);
+    return;
+  }
+  if (!grabbed) return;
+  if (e.key === "Escape") {
+    e.preventDefault(); e.stopPropagation();
+    setGrabbed(handle, unitEl, false);
+    return;
+  }
+  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+    e.preventDefault(); e.stopPropagation();
+    moveGrabbedUnit(unitEl, e.key === "ArrowDown" ? 1 : -1);
+  }
+}
+
+/**
+ * One arrow-key step: find the unit's neighbour in DOM order (a line's neighbour is
+ * the next/previous .ws-line anywhere on the worksheet, which is what lets a step
+ * cross a section boundary; a box's neighbour is the next/previous top-level child
+ * only), commit a move that lands the unit on the near side of that neighbour, then
+ * refocus so repeated arrow presses keep working. dir is +1 (down/next) or -1
+ * (up/previous).
+ */
+function moveGrabbedUnit(unitEl, dir) {
+  const unitKey = unitEl.dataset.unit;
+  const isLine = unitEl.classList.contains("ws-line");
+  const all = isLine
+    ? Array.prototype.slice.call(document.querySelectorAll("#worksheet .ws-line[data-unit]"))
+    : Array.prototype.slice.call(document.getElementById("worksheet").children)
+        .filter(function (c) { return c.matches(".ws-sec, .ws-line.ws-loose"); });
+  const target = all[all.indexOf(unitEl) + dir];
+  if (!target) return;                 // already at that end
+
+  const ctx = context();
+  const toRegion = isLine ? dropRegionOf(target) : TOP_REGION;
+  const list = (toRegion === TOP_REGION ? effectiveTopOrder(ctx) : regionUnits(toRegion, ctx))
+    .filter(function (k) { return k !== unitKey; });
+  const targetKey = isLine ? target.dataset.unit : topKeyOf(target);
+  const idx = list.indexOf(targetKey);
+  let toIndex = dir > 0 ? idx + 1 : idx;
+  if (idx < 0 || toIndex < 0) toIndex = list.length;
+
+  if (!applyMove({ unitKey: unitKey, toRegion: toRegion, toIndex: toIndex, adoptPara: null })) return;
+  structuralEdit();
+  scheduleSave();
+  refocusHandle(unitKey);
+}
+
+/** After a keyboard move rebuilds the worksheet, the old handle is gone — find the
+ *  new one for the same unit, focus it, and restore the grabbed look so the next
+ *  arrow press has something to act on. */
+function refocusHandle(unitKey) {
+  const esc = cssEsc(unitKey);
+  const handle = unitKey.indexOf("owner:") === 0
+    ? document.querySelector('.ws-sec[data-unit="' + esc + '"] .ws-sechead .ws-handle')
+    : document.querySelector('[data-unit="' + esc + '"] .ws-handle');
+  if (!handle) return;
+  handle.focus();
+  setGrabbed(handle, handle.closest("[data-unit]"), true);
+}
+
 function wire() {
   const us = document.getElementById("unit-select");
   const uo = document.getElementById("unit-other");
@@ -2815,6 +3921,9 @@ function wire() {
     if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true;
   });
   document.getElementById("new-call").addEventListener("click", newCall);
+  document.getElementById("reset-order").addEventListener("click", function () {
+    resetOrder(); saveNow(); renderAll();
+  });
   document.getElementById("polish-toggle").addEventListener("click", togglePolish);
   document.getElementById("copy-btn").addEventListener("click", doCopy);
 
@@ -2851,6 +3960,8 @@ function wire() {
     const first = row.querySelector(".ws-field");
     if (first && first.dataset.key !== ui.focusKey) focusFieldNode(first, false);
   });
+  ws.addEventListener("pointerdown", onHandlePointerDown);
+  ws.addEventListener("keydown", onHandleKey);
 }
 
 /* ============================ boot ============================ */
