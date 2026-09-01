@@ -10,7 +10,7 @@ Conventions
 - Every block ends with its escalation line. If it fires, stop the block and switch to the dedicated template.
 - Withheld treatments are written next to the drug they belong to, with the reason.
 - GCS appears only in the Neuro/AMS and Trauma blocks.
-- The finished narrative is four paragraphs: (1) initial — dispatch, primary, mental status/CC/history; (2) vitals; (3) assessment — impression, secondary/exam, and all blocks/templates; (4) disposition — ongoing/transport and disposition.
+- The finished narrative is four paragraphs: (1) initial — dispatch, primary, mental status/CC/history; (2) vitals; (3) assessment — impression, secondary/exam, and all blocks/templates; (4) disposition — ongoing/transport and disposition. This structure and the printed order within each paragraph are defaults: sentences and whole blocks may be rearranged — including into a different paragraph — to match the order things actually happened. The four-paragraph frame itself is fixed.
 
 ---
 
@@ -581,3 +581,5 @@ Pt txp ALS to NYP-HVHC. Hospital notified via cell at 2233. No pt changes throug
 - Ruling C (dysrhythmia pads): split out of the IV line into its own optional `{If performed:}` line; emitted wording unchanged when filled.
 - Conventions: added the multi-select notation (`{any that apply}`, applied here and to the five pre-existing multi fields already in the doc) and the four-paragraph structure statement.
 - Worked sample (§26): respaced to the four-paragraph model, AOx sentence updated to a real emission (`A, - LOC,`), meds sentence simplified to "Meds per list, compliant.", Associated list made a valid Oxford emission ("diaphoresis, N/V, and lightheadedness").
+
+**v0.9 addendum — 2026-09-01.** Chronology ruling: paragraph membership and within-paragraph order are defaults the author may rearrange to match the actual flow of the call (Conventions updated). Builder v1 implements it as drag-and-drop — a grab handle on every sentence and block, per-call arrangement saved with the draft, ¶ badges marking anything moved out of its home paragraph, and a Reset order control restoring the defaults. Block-internal reordering follows the same principle the MARCH note in §6 already states: the narrative reads in the order you did it.
