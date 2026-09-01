@@ -671,6 +671,402 @@ function paraOf(sectionId, lineId) {
   return PARA.slot;
 }
 
+/* ============================ ORDERING ============================ */
+
+/**
+ * User-controlled order. The DEFAULT order is DOC's own — shell sections in
+ * declaration order, the block slot at its anchor, the disposition last — and that
+ * default is what an untouched draft renders, unchanged from before any of this
+ * existed. A medic may rearrange it by dragging, and the arrangement is stored as
+ * three small, additive facts on the draft:
+ *
+ *   topOrder       null until the first drag, then the whole top-level order. NULL,
+ *                  not an empty array: an untouched draft has to keep following DOC
+ *                  as DOC grows, and only the absence of a stored order says so.
+ *   lineOrder      regionKey -> line keys, frozen one region at a time for the same
+ *                  reason — a region nobody dragged inside still follows DOC.
+ *   paraOverrides  unitKey -> 1..4, stored only where it differs from the unit's home
+ *                  paragraph, so a unit that is merely moved keeps answering to DOC.
+ *
+ * Three kinds of unit key are addressable:
+ *   "line:<lineId>"    one sentence. A fork's option lines are NOT units of their own:
+ *                      they ride with the fork line that owns them (see FORK_PARENT).
+ *   "owner:<ownerId>"  one whole block/template box; every row inside moves with it.
+ *   "sec:<sectionId>"  a fixed shell region, plus "sec:disposition". Sections are not
+ *                      draggable, but they are entries in the top-level order because
+ *                      lines are dropped relative to them.
+ * A regionKey is a "sec:" or "owner:" key read as a container: where a line lives.
+ *
+ * Nothing here renders, and nothing here saves. Everything is a pure read of DOC plus
+ * the draft, except applyMove() and resetOrder(), which mutate the draft and leave
+ * both the redraw and the write to their caller.
+ */
+const TOP_REGION = "__top__";
+
+/** lineId -> the outermost fork line it rides with. Filled by indexLines(). */
+const FORK_PARENT = Object.create(null);
+
+/**
+ * Which region does a line belong to when nobody has moved it?
+ * @param {string} lineId @returns {string|null} regionKey, or null for an unknown line
+ */
+function homeRegionOf(lineId) {
+  const rec = LINE_INDEX[lineId];
+  if (!rec) return null;
+  if (rec.ownerType === "shell") return "sec:" + rec.ownerId;
+  if (rec.ownerType === "disposition") return "sec:disposition";
+  return "owner:" + rec.ownerId;
+}
+
+/**
+ * The paragraph a unit lands in with nothing overriding it. A line answers from its
+ * HOME section, so dragging a sentence somewhere else does not silently re-file it —
+ * only an override does that. Every box is the slot paragraph.
+ * "sec:" keys are an extension used by applyMove()'s neighbour scan: a section cannot
+ * be dragged, but it is a legitimate neighbour to inherit a paragraph from.
+ * @param {string} unitKey @returns {number} 1..PARA.count
+ */
+function homeParaOf(unitKey) {
+  const key = String(unitKey);
+  if (key.indexOf("line:") === 0) {
+    const id = key.slice(5);
+    const rec = LINE_INDEX[id];
+    return rec ? paraOf(rec.sectionId, id) : PARA.slot;
+  }
+  if (key.indexOf("owner:") === 0) return PARA.slot;
+  // The disposition region has no single DOC section id — every disposition section is
+  // "disp_<id>" — so ask paraOf() with the prefix that decides it.
+  if (key === "sec:disposition") return paraOf("disp_", null);
+  if (key.indexOf("sec:") === 0) return paraOf(key.slice(4), null);
+  return PARA.slot;
+}
+
+/**
+ * The order DOC asks for: shell sections in declaration order, the stacked boxes in
+ * add order at the slot anchor, the disposition last. This mirrors assemble()'s
+ * traversal deliberately — that agreement is what makes a pristine draft render
+ * byte-identically. Unlike assemble() it does not drop collapsed or DOA-N/A sections
+ * and does not skip the disposition: this is the ORDER list, not the render filter,
+ * and every section has to hold a place in it whether or not it emits anything today.
+ * @param {Object} ctx @returns {Array<string>} unit keys
+ */
+function defaultTopOrder(ctx) {
+  const out = [];
+  const anchor = slotAnchorId();
+  const owners = (ctx.blockIds || []).map(function (id) { return "owner:" + id; });
+  let slotPlaced = false;
+  ((DOC.shell && DOC.shell.sections) || []).forEach(function (s) {
+    out.push("sec:" + s.id);
+    if (s.id === anchor) { out.push.apply(out, owners); slotPlaced = true; }
+  });
+  if (!slotPlaced) out.push.apply(out, owners);
+  out.push("sec:disposition");
+  return out;
+}
+
+/**
+ * Is this region still on the chart? A list stored against a box that was removed is
+ * kept rather than deleted: adding the box back puts its lines where the medic had
+ * them. Until then the region does not exist and its lines fall back to their homes.
+ * @param {string} regionKey @param {Object} d draft @returns {boolean}
+ */
+function regionExists(regionKey, d) {
+  const key = String(regionKey);
+  if (key === "sec:disposition") return true;
+  if (key.indexOf("owner:") === 0) return (d.blockIds || []).indexOf(key.slice(6)) >= 0;
+  if (key.indexOf("sec:") === 0) {
+    const id = key.slice(4);
+    return ((DOC.shell && DOC.shell.sections) || []).some(function (s) { return s.id === id; });
+  }
+  return false;
+}
+
+/**
+ * Where does each moved line actually live? One line key can survive in more than one
+ * stored list, so the FIRST list to claim it wins and later copies are ignored — top
+ * level first, then the region lists. Keys that can no longer be honoured are dropped
+ * here once instead of at every call site: lines DOC no longer declares, fork option
+ * lines (they ride with their fork, so they were never placeable), and every list
+ * belonging to a region that is not currently on the chart.
+ * @param {Object} d draft @returns {Map<string,string>} "line:<id>" -> regionKey | TOP_REGION
+ */
+function placementIndex(d) {
+  const place = new Map();
+  const claim = function (list, regionKey) {
+    (list || []).forEach(function (key) {
+      if (String(key).indexOf("line:") !== 0) return;
+      const id = String(key).slice(5);
+      if (!LINE_INDEX[id] || FORK_PARENT[id]) return;
+      if (!place.has(key)) place.set(key, regionKey);
+    });
+  };
+  claim(d.topOrder, TOP_REGION);
+  const lists = d.lineOrder || {};
+  Object.keys(lists).forEach(function (regionKey) {
+    if (!regionExists(regionKey, d)) return;
+    claim(lists[regionKey], regionKey);
+  });
+  return place;
+}
+
+/**
+ * Fold DOC's defaults back into a stored order without disturbing the arrangement.
+ * A default that is missing — a new section, a box just added to the stack, a line DOC
+ * grew after this region was frozen — is inserted immediately after its nearest
+ * PRECEDING default sibling that is already present, so it keeps the adjacency DOC
+ * declared for it; with nothing of its own preceding it, it goes to the front. Walking
+ * the defaults in order means several new neighbours stay in DOC's order among
+ * themselves. A stored order of nothing therefore reproduces the defaults exactly.
+ * @param {Array<string>} current @param {Array<string>} defaults @returns {Array<string>}
+ */
+function mergeDefaults(current, defaults) {
+  const out = current.slice();
+  let prev = null;
+  (defaults || []).forEach(function (key) {
+    if (out.indexOf(key) >= 0) { prev = key; return; }
+    const at = prev === null ? -1 : out.indexOf(prev);
+    out.splice(at + 1, 0, key);
+    prev = key;
+  });
+  return out;
+}
+
+/** A stored top-level entry survives only while the thing it names is still there. */
+function topEntryValid(key, ctx, defaults, place) {
+  const k = String(key);
+  if (k.indexOf("sec:") === 0) return defaults.indexOf(k) >= 0;
+  if (k.indexOf("owner:") === 0) return (ctx.blockIds || []).indexOf(k.slice(6)) >= 0;
+  if (k.indexOf("line:") === 0) return place.get(k) === TOP_REGION;
+  return false;
+}
+
+/**
+ * The top-level order in force right now: what the medic arranged, minus entries that
+ * no longer hold, plus every default the arrangement predates. A pristine draft gets
+ * defaultTopOrder() back untouched — the identity paragraphs() rests on.
+ * @param {Object} ctx @returns {Array<string>} unit keys; every "sec:" key is present
+ */
+function effectiveTopOrder(ctx) {
+  const d = ctx.d;
+  const defaults = defaultTopOrder(ctx);
+  if (!d.topOrder) return defaults;
+  const place = placementIndex(d);
+  const kept = [];
+  d.topOrder.forEach(function (key) {
+    if (kept.indexOf(key) >= 0) return;
+    if (!topEntryValid(key, ctx, defaults, place)) return;
+    kept.push(key);
+  });
+  return mergeDefaults(kept, defaults);
+}
+
+/**
+ * The lines DOC puts in a region, in DOC's order — the same walk the worksheet and the
+ * assembler make (ownerRows / ownerSections): a shell section's own top-level lines,
+ * the ACTIVE disposition's lines, or a box's active sub-block lines followed by its
+ * block-level lines. Forks are not recursed into, because a fork is one unit. The
+ * disposition picker is not a sentence and never appears here.
+ * @param {string} regionKey @param {Object} ctx @returns {Array<string>} line keys
+ */
+function regionDefaults(regionKey, ctx) {
+  const key = String(regionKey);
+  const keysOf = function (lines) {
+    return (lines || []).map(function (l) { return "line:" + l.id; });
+  };
+  if (key === "sec:disposition") {
+    const dsp = (DOC.dispositions || []).find(function (x) { return x.id === ctx.d.disposition; });
+    return dsp ? keysOf(dsp.lines) : [];
+  }
+  if (key.indexOf("sec:") === 0) {
+    const id = key.slice(4);
+    const s = ((DOC.shell && DOC.shell.sections) || []).find(function (x) { return x.id === id; });
+    return s ? keysOf(s.lines) : [];
+  }
+  if (key.indexOf("owner:") === 0) {
+    const res = resolveOwner(key.slice(6));
+    if (!res) return [];
+    let out = [];
+    (res.owner.subBlocks || []).forEach(function (sb) {
+      if (subActive(res.owner, sb)) out = out.concat(keysOf(sb.lines));
+    });
+    return out.concat(keysOf(res.owner.lines));
+  }
+  return [];
+}
+
+/**
+ * The lines living in a region right now, in order: the medic's arrangement for that
+ * region — minus anything since claimed by another region or dropped out of DOC — with
+ * DOC's own lines merged back in at the adjacency DOC declared for them.
+ * Eligibility is deliberately NOT consulted here. This is the order list, not the
+ * render filter: a line that emits nothing today still holds its place for the day it
+ * does, and the renderers and the assembler keep their own eligibility rules.
+ * @param {string} regionKey @param {Object} ctx
+ * @param {Map} [place] a placement scan to share, when the caller already made one
+ * @returns {Array<string>} line keys
+ */
+function regionUnits(regionKey, ctx, place) {
+  const d = ctx.d;
+  const pl = place || placementIndex(d);
+  const stored = (d.lineOrder || {})[regionKey] || [];
+  const kept = [];
+  stored.forEach(function (key) {
+    if (kept.indexOf(key) >= 0) return;
+    if (pl.get(key) !== regionKey) return;
+    kept.push(key);
+  });
+  // Defaults claimed by another region drop out entirely — they live there now, and
+  // they cannot anchor anything here either. Ones already kept stay in, as anchors.
+  const defaults = regionDefaults(regionKey, ctx).filter(function (key) {
+    return kept.indexOf(key) >= 0 || !pl.has(key);
+  });
+  return mergeDefaults(kept, defaults);
+}
+
+/**
+ * One integer per addressable unit, in the order the narrative reads: each top-level
+ * entry, then — where that entry is a region — the lines inside it. A region takes an
+ * ordinal of its own, which is what makes a box sortable as a box and what gives a line
+ * dropped at the very top of a region a neighbour above it to inherit from.
+ * @param {Object} ctx @returns {Map<string,number>} unitKey -> ordinal
+ */
+function globalUnitIndex(ctx) {
+  const place = placementIndex(ctx.d);
+  const map = new Map();
+  let n = 0;
+  effectiveTopOrder(ctx).forEach(function (key) {
+    if (!map.has(key)) map.set(key, n++);
+    if (String(key).indexOf("line:") === 0) return;      // a loose line has no region
+    regionUnits(key, ctx, place).forEach(function (lineKey) {
+      if (!map.has(lineKey)) map.set(lineKey, n++);
+    });
+  });
+  return map;
+}
+
+/**
+ * The paragraph a unit is in: its override, else its home. paragraphs() additionally
+ * lets a box's override stand in for the lines the box owns; this answers for one unit.
+ * @param {string} unitKey @param {Object} d draft @returns {number} 1..PARA.count
+ */
+function resolvedParaOf(unitKey, d) {
+  const over = d && d.paraOverrides ? d.paraOverrides[unitKey] : null;
+  return over || homeParaOf(unitKey);
+}
+
+/** Where a unit lives at this instant: the stored list that claims it, else its home. */
+function currentRegionOf(unitKey, d) {
+  if ((d.topOrder || []).indexOf(unitKey) >= 0) return TOP_REGION;
+  const lists = d.lineOrder || {};
+  const found = Object.keys(lists).find(function (rk) {
+    return (lists[rk] || []).indexOf(unitKey) >= 0;
+  });
+  if (found) return found;
+  if (String(unitKey).indexOf("line:") === 0) return homeRegionOf(String(unitKey).slice(5));
+  return TOP_REGION;                                     // a box only ever lives up top
+}
+
+/** Freeze one region's current order onto the draft, unless it is frozen already. */
+function materializeRegion(d, regionKey, ctx) {
+  if (!regionKey || regionKey === TOP_REGION) return;
+  if (!d.lineOrder) d.lineOrder = {};
+  if (d.lineOrder[regionKey]) return;
+  if (!regionExists(regionKey, d)) return;
+  d.lineOrder[regionKey] = regionUnits(regionKey, ctx);
+}
+
+/**
+ * With no paragraph asked for, a moved unit joins the one it landed against: the unit
+ * immediately above it in the new order, or the one below when it landed at the very
+ * top, or its own home when there is nothing else. Call this AFTER the move is
+ * committed — it reads the arrangement the move just wrote.
+ * A box is followed by its OWN lines, so the downward scan steps over them: the point
+ * is which neighbour the box joined, and its own contents are not a neighbour.
+ * @param {string} unitKey @param {Object} ctx @returns {number} 1..PARA.count
+ */
+function inheritedPara(unitKey, ctx) {
+  const order = Array.from(globalUnitIndex(ctx).keys());
+  const at = order.indexOf(unitKey);
+  if (at < 0) return homeParaOf(unitKey);
+  if (at > 0) return resolvedParaOf(order[at - 1], ctx.d);
+  const own = String(unitKey).indexOf("owner:") === 0 ? regionUnits(unitKey, ctx) : [];
+  for (let i = at + 1; i < order.length; i++) {
+    if (own.indexOf(order[i]) < 0) return resolvedParaOf(order[i], ctx.d);
+  }
+  return homeParaOf(unitKey);
+}
+
+/**
+ * Commit one drag. The caller decides where the unit landed; this records it and
+ * nothing else — no redraw, no save — so the caller keeps control of both.
+ *
+ * @param {{unitKey:string, toRegion:string, toIndex:number, adoptPara:?number}} move
+ *   unitKey    "line:<id>" or "owner:<id>". A box carries its whole region with it, so
+ *              it has nowhere to go but among the top-level units.
+ *   toRegion   a regionKey, or TOP_REGION ("__top__") for the top level.
+ *   toIndex    an index into the destination list AFTER the unit has been taken out of
+ *              wherever it was: 0 is first, the list's length is last. Stating it
+ *              post-removal is what makes a move within one list unambiguous.
+ *   adoptPara  the paragraph the caller wants, or null to inherit from the neighbours.
+ * @returns {boolean} whether anything moved
+ */
+function applyMove(move) {
+  if (!move || !move.unitKey) return false;
+  const key = String(move.unitKey);
+  const isOwner = key.indexOf("owner:") === 0;
+  const isLine = key.indexOf("line:") === 0;
+  if (!isOwner && !isLine) return false;
+  // A fork's option line has no place of its own to move to — it rides with its fork.
+  if (isLine && FORK_PARENT[key.slice(5)]) return false;
+  const ctx = context();
+  const d = ctx.d;
+  const to = move.toRegion || TOP_REGION;
+  if (isOwner && to !== TOP_REGION) return false;
+  if (to !== TOP_REGION && !regionExists(to, d)) return false;
+
+  // Freeze first, and only what this move touches: an untouched list stays absent so
+  // its region keeps following DOC, while the lists about to be rewritten have to be
+  // snapshots of what the medic is looking at, taken BEFORE anything shifts.
+  if (!d.topOrder) d.topOrder = effectiveTopOrder(ctx);
+  materializeRegion(d, currentRegionOf(key, d), ctx);
+  materializeRegion(d, to, ctx);
+
+  // Out of everywhere, not just out of where we think it was: a stale duplicate left in
+  // some other list would otherwise resurrect the unit at its old place.
+  d.topOrder = d.topOrder.filter(function (x) { return x !== key; });
+  Object.keys(d.lineOrder).forEach(function (rk) {
+    d.lineOrder[rk] = (d.lineOrder[rk] || []).filter(function (x) { return x !== key; });
+  });
+
+  const list = to === TOP_REGION ? d.topOrder : d.lineOrder[to];
+  let at = move.toIndex | 0;
+  if (!(at >= 0)) at = 0;
+  if (at > list.length) at = list.length;
+  list.splice(at, 0, key);
+
+  const adopted = move.adoptPara != null ? move.adoptPara : inheritedPara(key, ctx);
+  // Only a difference from DOC is worth storing; matching it again forgets the override.
+  if (adopted === homeParaOf(key)) delete d.paraOverrides[key];
+  else d.paraOverrides[key] = adopted;
+  return true;
+}
+
+/** Back to DOC's order, wholesale. Mutation only — no redraw, no save. */
+function resetOrder() {
+  const d = draft();
+  d.topOrder = null;
+  d.lineOrder = {};
+  d.paraOverrides = {};
+}
+
+/** @returns {boolean} has the medic arranged anything? (what a reset affordance asks) */
+function orderCustomized() {
+  const d = draft();
+  if (d.topOrder) return true;
+  if (Object.keys(d.lineOrder || {}).length) return true;
+  return Object.keys(d.paraOverrides || {}).length > 0;
+}
+
 /* -------------------------------------------------------------------------
    DEFAULTS — clinical content, signed off. An unset field that has a default
    is PROPOSED: it emits its default text faintly and counts against the copy
@@ -765,13 +1161,19 @@ const OWNER_FIELDS = Object.create(null);
 /** category name -> {type:"block"|"template", id} */
 const CATEGORY_INDEX = Object.create(null);
 
-function indexLines(lines, meta, fieldBag) {
+function indexLines(lines, meta, fieldBag, forkRoot) {
   (lines || []).forEach(function (line) {
     LINE_INDEX[line.id] = { line: line, ownerType: meta.ownerType, ownerId: meta.ownerId,
                             sectionId: meta.sectionId, sectionName: meta.sectionName };
+    // A fork's option lines are not units the medic can move: they ride with the
+    // OUTERMOST fork line, which is the one that occupies a place in the narrative.
+    // Record that ancestry here rather than re-walking DOC for it (see ORDERING).
+    if (forkRoot) FORK_PARENT[line.id] = forkRoot;
     collectFieldIds(line, fieldBag);
     if (line.kind === "fork") {
-      (line.options || []).forEach(function (o) { indexLines(o.lines, meta, fieldBag); });
+      (line.options || []).forEach(function (o) {
+        indexLines(o.lines, meta, fieldBag, forkRoot || line.id);
+      });
     }
   });
 }
@@ -836,7 +1238,10 @@ function makeDraft(label, unit) {
     // line-level attestations for structural proposals: tri attested-as-omit,
     // esc attested-as-not-fired. Field proposals are accepted into `values`.
     attested: {},
-    naSections: {}, ptContactMade: false, disposition: null, polish: null
+    naSections: {}, ptContactMade: false, disposition: null, polish: null,
+    // Order the medic arranged, if any (see ORDERING). A null topOrder is pristine:
+    // it means "follow DOC", which an empty array could not say.
+    topOrder: null, lineOrder: {}, paraOverrides: {}
   };
 }
 let state = { drafts: [makeDraft("Call")], activeDraft: 0 };
@@ -1289,19 +1694,68 @@ function joinRows(rows, paint) {
 }
 
 /**
- * Deal every emitted row into its paragraph, keeping assembly order within each.
+ * Deal every emitted row into its paragraph, in the order the medic arranged.
+ *
+ * Rows arrive in assembly order and each names the line that produced it; the ordering
+ * index (see ORDERING) says where that line's UNIT sits now. Sorting by that index —
+ * stably, so several rows from one unit keep assembly order between them — is the whole
+ * of what dragging a sentence does to the narrative.
+ *
+ * A PRISTINE draft is byte-identical to the old fixed order. With nothing stored,
+ * effectiveTopOrder() is defaultTopOrder() and every region is DOC's own list, and
+ * defaultTopOrder() mirrors assemble()'s traversal exactly (shell sections in DOC order,
+ * the slot at its anchor, disposition last). Ordinals therefore only ever rise along
+ * assembly order, and a stable sort cannot move anything.
+ *
+ * A row whose unit has no ordinal at all inherits the nearest preceding row that had
+ * one, which holds assembleSlot()'s orphaned fired-escalation rows — their box is no
+ * longer stacked, so it is in no order — exactly where they render.
  * @returns {Array<Array<Object>>} PARA.count buckets, in order (empties included)
  */
 function paragraphs(asm) {
-  const buckets = [];
-  for (let i = 0; i < PARA.count; i++) buckets.push([]);
-  asm.sections.forEach(function (s) {
+  const d = draft();
+  const index = globalUnitIndex(context());
+  const overrides = d.paraOverrides || {};
+  const rows = [];
+  let carried = -1;                        // before any known row: sorts to the front
+  (asm.sections || []).forEach(function (s) {
     s.lines.forEach(function (l) {
-      const i = (l.para || PARA.slot) - 1;
-      buckets[i >= 0 && i < buckets.length ? i : PARA.slot - 1].push(l);
+      const unitId = FORK_PARENT[l.lineId] || l.lineId;
+      const at = index.get("line:" + unitId);
+      if (at != null) carried = at;
+      rows.push({ row: l, sort: at != null ? at : carried, seq: rows.length,
+                  para: rowPara(unitId, l, overrides) });
     });
   });
+  // ES2020's sort IS stable; the tiebreak is written out anyway because assembly order
+  // is load-bearing here, not something to inherit from the engine's good behaviour.
+  rows.sort(function (a, b) { return (a.sort - b.sort) || (a.seq - b.seq); });
+
+  const buckets = [];
+  for (let i = 0; i < PARA.count; i++) buckets.push([]);
+  rows.forEach(function (r) {
+    const i = r.para - 1;
+    buckets[i >= 0 && i < buckets.length ? i : PARA.slot - 1].push(r.row);
+  });
   return buckets;
+}
+/**
+ * Which paragraph does one row land in? The line's own override wins. Failing that, a
+ * line that BELONGS to a box follows the box's override, so moving a box takes its
+ * sentences with it. Failing that, the paragraph the row was stamped with at render
+ * time — the row's own answer, not a re-derived one, so nothing can drift from it.
+ * @param {string} unitId @param {Object} row @param {Object} overrides
+ * @returns {number} a paragraph number, clamped by the caller
+ */
+function rowPara(unitId, row, overrides) {
+  const own = overrides["line:" + unitId];
+  if (own) return own;
+  const rec = LINE_INDEX[unitId];
+  if (rec && (rec.ownerType === "block" || rec.ownerType === "template")) {
+    const box = overrides["owner:" + rec.ownerId];
+    if (box) return box;
+  }
+  return row.para || PARA.slot;
 }
 
 /**
@@ -2410,6 +2864,13 @@ function removeBlock(id) {
     const d = draft();
     d.blockIds = d.blockIds.filter(function (x) { return x !== id; });
     delete d.subs[id];
+    // The box stops being an orderable unit, so its top-level place, its own line order
+    // and its paragraph go with it. Lines of this box that the medic had dragged into
+    // OTHER regions are left stored exactly where they are: the assembler simply stops
+    // emitting them, and adding the box back restores them where the medic had them.
+    if (d.topOrder) d.topOrder = d.topOrder.filter(function (x) { return x !== "owner:" + id; });
+    delete d.lineOrder["owner:" + id];
+    delete d.paraOverrides["owner:" + id];
     structuralEdit();
   };
   if (!blockHasValues(id)) { drop(); return; }
@@ -2719,7 +3180,11 @@ function restore() {
       const m = Object.assign(base, d, {
         values: d.values || {}, forks: d.forks || {}, esc: d.esc || {},
         attested: d.attested || {},          // drafts saved before attestations existed
-        naSections: d.naSections || {}, subs: d.subs || {}, blockIds: d.blockIds || []
+        naSections: d.naSections || {}, subs: d.subs || {}, blockIds: d.blockIds || [],
+        // Drafts saved before ordering existed are pristine by definition: no stored
+        // order at all, which is exactly what null / empty say (see ORDERING).
+        topOrder: d.topOrder || null, lineOrder: d.lineOrder || {},
+        paraOverrides: d.paraOverrides || {}
       });
       // Migrate pre-owner-stack drafts: the old activeTemplate / activeAddendum pair
       // becomes the tail of the one owner stack, in that order.
