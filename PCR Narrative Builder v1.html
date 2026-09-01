@@ -141,9 +141,7 @@ button:active { background: var(--tint); }
 
 /* ---- lines ---- */
 .line { display: flex; flex-direction: column; gap: 4px; border-radius: 6px; }
-.line.flash { animation: flashbg .9s ease-out; }
 .line.target { box-shadow: inset 3px 0 0 var(--red-text); background: var(--red-bg); }
-@keyframes flashbg { 0% { background: var(--tint); } 100% { background: transparent; } }
 .line-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .line-label { font-size: 11.5px; color: var(--text-2); letter-spacing: .03em; }
 .line-hint { font-size: 11px; color: var(--text-faint); font-style: italic; }
@@ -212,14 +210,17 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 #copy-btn.confirming { background: var(--sheet); color: var(--red-text); border-color: var(--red-border); }
 #copy-btn.confirming:hover { background: var(--red-bg); }
 #missing-list { border-bottom: 1px solid var(--border); max-height: 20vh; overflow-y: auto; position: relative; }
-.ml-group { padding-bottom: 4px; }
-.ml-head { font-family: var(--sans); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 500; padding: 8px 14px 2px; position: sticky; top: 0; background: var(--sheet); z-index: 1; }
+.ml-group { padding-bottom: 4px; display: grid; grid-template-columns: max-content 1fr; }
+.ml-head { font-family: var(--sans); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 500; padding: 8px 14px 2px; position: sticky; top: 0; background: var(--sheet); z-index: 1; grid-column: 1 / -1; }
 .ml-row {
-  display: block; width: 100%; text-align: left; background: transparent;
+  display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; column-gap: 6px;
+  width: 100%; text-align: left; background: transparent;
   border: none; border-bottom: 1px solid var(--border); border-radius: 0;
   height: auto; padding: 2px 14px; font-family: var(--serif); font-style: italic; font-size: 12.5px; color: var(--red-text);
 }
 .ml-row:hover { text-decoration: underline; background: var(--red-bg); }
+.ml-row .ml-line { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.ml-row .ml-field { min-width: 0; }
 #missing-list.polishing { opacity: .5; pointer-events: none; }
 .ml-polish-note { font-family: var(--sans); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 500; padding: 8px 14px 2px; }
 .ml-more { position: sticky; bottom: 0; background: var(--sheet); border-top: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--text-faint); padding: 4px 14px; }
@@ -949,9 +950,12 @@ function partsHaveValue(parts, values) {
 /** @param {string} [label] overrides the derived tail — for computed parts whose
  *  field id does not read as English (see renderAox). */
 function noteMissing(c, fieldId, hint, label) {
+  const lineLabel = c.line.label || c.line.id;
+  const fieldLabel = label || fieldTail(fieldId, c.line.id, hint);
   c.missing.push({
     lineId: c.line.id, fieldId: fieldId, sectionId: c.sectionId, sectionName: c.sectionName,
-    label: (c.line.label || c.line.id) + " — " + (label || fieldTail(fieldId, c.line.id, hint))
+    lineLabel: lineLabel, fieldLabel: fieldLabel,
+    label: lineLabel + " — " + fieldLabel
   });
 }
 function fieldTail(fieldId, lineId, hint) {
@@ -1970,10 +1974,14 @@ function renderMissing(missing) {
   groups.forEach(function (g) {
     const box = el("div", "ml-group");
     box.appendChild(el("div", "ml-head", g.name || g.id));
+    let prevLineId = null;
     g.rows.forEach(function (m) {
-      const b = el("button", "ml-row", m.label);
+      const b = el("button", "ml-row");
       b.type = "button";
       b.dataset.field = m.fieldId;
+      b.appendChild(el("span", "ml-line", m.lineId === prevLineId ? "" : m.lineLabel));
+      b.appendChild(el("span", "ml-field", "— " + m.fieldLabel));
+      prevLineId = m.lineId;
       b.addEventListener("click", function () { jumpToField(m.fieldId, m.lineId); });
       box.appendChild(b);
     });
@@ -2016,16 +2024,31 @@ function revealAncestors(node) {
     p = p.parentNode;
   }
 }
+let focusMarkToken = 0;
 function focusNode(node) {
   if (!node) return;
+  const prevTarget = document.querySelector(".line.target");
+  if (prevTarget) prevTarget.classList.remove("target");
   revealAncestors(node);
-  node.scrollIntoView({ block: "center", behavior: "smooth" });
+  const instant = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  node.scrollIntoView({ block: "center", behavior: instant ? "auto" : "smooth" });
   if (typeof node.focus === "function") node.focus({ preventScroll: true });
   const line = node.closest ? node.closest(".line") : null;
-  if (line) {
-    line.classList.add("flash");
-    setTimeout(function () { line.classList.remove("flash"); }, 900);
-  }
+  if (!line) return;
+  const token = ++focusMarkToken;
+  const mark = function () {
+    if (token !== focusMarkToken) return;
+    line.classList.add("target");
+  };
+  if (instant) { mark(); return; }
+  let settled = false;
+  const finish = function () {
+    if (settled) return;
+    settled = true;
+    mark();
+  };
+  window.addEventListener("scrollend", finish, { once: true });
+  setTimeout(finish, 600);
 }
 function jumpToField(fieldId, lineId) {
   let n = document.querySelector('#form-pane [data-field="' + cssEsc(fieldId) + '"]');
@@ -2506,6 +2529,10 @@ function wire() {
     scheduleSave();
   });
   document.getElementById("missing-list").addEventListener("scroll", updateMissingOverflow);
+  document.getElementById("form-pane").addEventListener("input", function (e) {
+    const marked = e.target.closest ? e.target.closest(".line.target") : null;
+    if (marked) marked.classList.remove("target");
+  });
 }
 
 /* ============================ boot ============================ */
