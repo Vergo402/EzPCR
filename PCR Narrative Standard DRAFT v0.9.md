@@ -25,7 +25,7 @@ Pt [+/-] patent airway, [+/-] breathing w/ initial L/S ___, [+/-] ___ pulse {loc
 {Conditional line, only if something was done before the full assessment:} ___ {e.g. "Pt placed on NRB 15 LPM." "Narcan 4 mg IN administered." "Tourniquet applied R thigh ___." Delete if nothing.}
 
 **Mental status / CC / History**
-Pt A+Ox___ (P, P, T, E), [A/V/P/U], [+/-] LOC, and complaining of ___ {onset, duration, in pt's words}. [Pt / bystanders / family / healthcare staff] state ___.
+Pt A+Ox___ (P, P, T, E), [A/V/P/U], [+ LOC ~___ min / - LOC / unknown LOC], and complaining of ___ {onset, duration, in pt's words}. [Pt / bystanders / family / healthcare staff] state ___.
 Pt PMHx ___. Meds [per list / ___ / noncompliant ___] {any that apply}. Allergies [NKDA / ___]. {Add: last oral intake, LMP, DNR/MOLST status when relevant.}
 
 **Assessment**
@@ -533,12 +533,12 @@ Released by ___ at ___. Demobilized, unit restocked at ___, returned to service 
 35M3 dispatched to a private residence in the Town of Cortlandt for a 68 yo M with chest pain. 35M3 responded emergency. 35M3 arrived on scene (Cortlandt Community VAC on location) and found 68 yo M pt seated on the edge of his bed, diaphoretic, clutching his chest, in moderate distress.
 Pt + patent airway, + breathing w/ initial L/S clear bilat, + radial pulse strong and regular, skin pale, cool, diaphoretic. Pt placed on NC 2 LPM by VAC prior to arrival, SpO2 96%.
 Pt A+Ox4 (P, P, T, E), A, - LOC, and complaining of "pressure in the middle of my chest" x 45 min, onset at rest while watching TV. Pt states pain radiates to L arm and jaw, 7/10, worse than anything prior, with nausea and one episode of lightheadedness on standing. Wife states pt "looked gray" and took nothing prior to calling 911.
-Pt PMHx HTN, HLD, DM2, ex-smoker quit 2015, no prior cardiac hx. Meds lisinopril, atorvastatin, metformin. NKDA. Last oral intake dinner 1900. No MOLST.
+Pt PMHx HTN, HLD, DM2, ex-smoker quit 2015, no prior cardiac hx. Meds per list, compliant. NKDA. Last oral intake dinner 1900. No MOLST.
 
 Vitals as noted in emsCharts activity log, concerning for initial BP 152/90, HR 88, RR 20, SpO2 96% on 2 LPM, BGL 164.
 
 Working impression ACS. DDx unstable angina vs NSTEMI vs aortic dissection vs PE.
-Pt describes substernal pressure, non-reproducible, non-pleuritic, no tearing quality, equal radial pulses bilat, no calf tenderness, no recent immobility. Associated diaphoresis, N, and lightheadedness. Cardiac risk factors HTN, HLD, DM, former smoker, FHx father MI at 62.
+Pt describes substernal pressure, non-reproducible, non-pleuritic, no tearing quality, equal radial pulses bilat, no calf tenderness, no recent immobility. Associated diaphoresis, N/V, and lightheadedness. Cardiac risk factors HTN, HLD, DM, former smoker, FHx father MI at 62.
 12-lead acquired at 2214: NSR 88, normal axis, intervals WNL, nonspecific T-wave flattening in V5-V6, no ST elevation or depression, no reciprocal changes.
 ASA 324 mg PO administered at 2216.
 NTG 0.4 mg SL x2 at 2217 and 2223, pain 7 to 3/10, BP 138/84 after second dose.
@@ -565,7 +565,7 @@ Pt txp ALS to NYP-HVHC. Hospital notified via cell at 2233. No pt changes throug
 
 **v0.9 — 2026-09-01.** Sync pass closing the SYNC DEBT between this MD and the builder's DOC (18 defaults-review changes had been applied to the DOC directly, MD trailing until now — 13 of them needed MD-side sync, listed below), plus three demotion rulings from the same review.
 - Meds marked multi-select (`{any that apply}`).
-- `[+/-] LOC` added to the shell AOx/mental-status sentence, unconditional for every call type; the traumaGeneral MOI's own `LOC [Y ___ min / N / unknown]` line removed — duration/unknown capture dropped by design, bare +/- now lives in the shell.
+- LOC moved to the shell AOx/mental-status sentence with full capture — `[+ LOC ~___ min / - LOC / unknown LOC]`, unconditional for every call type; the traumaGeneral MOI's own `LOC [Y ___ min / N / unknown]` line removed as redundant.
 - DCAP-BTLS pill added ahead of the traumaGeneral injuries line.
 - Posturing options: `[none / decorticate / decerebrate]`.
 - Basilar skull fx signs: named multi-select options (fluid from L/R ear, halo sign, Battle sign, raccoon eyes; none exclusive by convention).
@@ -580,4 +580,4 @@ Pt txp ALS to NYP-HVHC. Hospital notified via cell at 2233. No pt changes throug
 - Ruling B (ACS serial 12-lead): demoted to optional, styled `{If performed:}` after the §2a Symptomatic HTN/Hypotension precedent.
 - Ruling C (dysrhythmia pads): split out of the IV line into its own optional `{If performed:}` line; emitted wording unchanged when filled.
 - Conventions: added the multi-select notation (`{any that apply}`, applied here and to the five pre-existing multi fields already in the doc) and the four-paragraph structure statement.
-- Worked sample (§26): respaced to the four-paragraph model, AOx sentence updated to a real emission (`A, - LOC,`), meds sentence corrected to a valid emission (dropped "per list, compliant").
+- Worked sample (§26): respaced to the four-paragraph model, AOx sentence updated to a real emission (`A, - LOC,`), meds sentence simplified to "Meds per list, compliant.", Associated list made a valid Oxford emission ("diaphoresis, N/V, and lightheadedness").
