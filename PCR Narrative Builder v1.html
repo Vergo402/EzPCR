@@ -12,7 +12,8 @@
 /* PCR Narrative Builder v1 — stylesheet: clinical editorial skin (reconciled to engine markup). Light mode only. */
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { height: 100%; }
+html { height: 100%; }
+body { min-height: 100%; }
 body {
   margin: 0; background: #F7F4ED; color: #23201A;
   font-family: 'Archivo', system-ui, -apple-system, sans-serif;
@@ -140,7 +141,7 @@ button:active { background: var(--tint); }
 }
 
 /* ---- lines ---- */
-.line { display: flex; flex-direction: column; gap: 4px; border-radius: 6px; }
+.line { display: flex; flex-direction: column; gap: 4px; border-radius: 6px; scroll-margin-top: 70px; }
 .line.target { box-shadow: inset 3px 0 0 var(--red-text); background: var(--red-bg); }
 .line-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .line-label { font-size: 11.5px; color: var(--text-2); letter-spacing: .03em; }
@@ -234,6 +235,7 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 .pv-line { cursor: pointer; border-radius: 3px; padding: 0 2px; margin: 0 -2px; }
 .pv-line:hover { background: var(--tint); }
 .pv-blank { background: var(--red-bg); color: var(--red-text); border-bottom: 1.5px solid var(--red-text); border-radius: 2px 2px 0 0; padding: 0 6px; font-weight: 500; }
+.pv-blank:hover { background: var(--red-bg); border-radius: 3px; cursor: pointer; }
 .pv-withheld { background: var(--amber-bg); border-radius: 2px; }
 
 /* ---- modal ---- */
@@ -252,7 +254,7 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 .modal-btn.danger:hover { background: #8C2F22; }
 
 /* ---- responsive ---- */
-@media (max-width: 899px) {
+@media (max-width: 1099px) {
   #panes { flex-direction: column; }
   #form-pane, #preview-pane { flex: 1 1 auto; width: 100%; }
   #preview-pane { position: static; max-height: none; }
@@ -1162,10 +1164,22 @@ function assemblyText(asm) {
 
 /** @returns {string} preview HTML: one span per line, blanks and withheld marked */
 function assemblyHtml(asm) {
+  const missingByLine = {};
+  (asm.missing || []).forEach(function (m) {
+    if (!missingByLine[m.lineId]) missingByLine[m.lineId] = [];
+    missingByLine[m.lineId].push(m);
+  });
+  const blankCursor = {};
   return asm.sections.map(function (s) {
     return joinRows(s.lines, function (l) {
-      const body = replaceAllStr(replaceAllStr(esc(l.raw), esc(BL0), '<span class="pv-blank">'),
-        esc(BL1), "</span>");
+      const body = esc(l.raw).replace(/[\s\S]*?/g, function (match) {
+        const i = blankCursor[l.lineId] || 0;
+        blankCursor[l.lineId] = i + 1;
+        const m = (missingByLine[l.lineId] || [])[i];
+        const inner = match.slice(1, -1);
+        return '<span class="pv-blank"' + (m ? ' data-field="' + esc(m.fieldId) + '"' : "") +
+          ">" + inner + "</span>";
+      });
       return '<span class="pv-line' + (l.withheld ? " pv-withheld" : "") +
         '" data-line="' + esc(l.lineId) + '">' + body + "</span>";
     });
@@ -1452,12 +1466,38 @@ function replaceLineNode(lineId) {
   if (!old) { renderAll(); return; }
   const rec = LINE_INDEX[lineId];
   if (!rec) { renderAll(); return; }
+  const refocus = captureLineFocus(old);
   const fresh = lineNode(rec.line, context());
   fresh.dataset.idx = old.dataset.idx || "0";
   old.parentNode.replaceChild(fresh, old);
+  restoreLineFocus(fresh, refocus);
   syncCondPlacement();
   if (draft().polish) { warnPolish(); scheduleSave(); return; }
   renderPreview(); scheduleSave();
+}
+/** @returns {?{field:string, idx:number}} the active control's data-field and its
+ *  position among same-data-field siblings in `node`, or null when nothing to restore */
+function captureLineFocus(node) {
+  try {
+    const active = document.activeElement;
+    if (!active || !node.contains(active)) return null;
+    const field = active.closest ? active.closest("[data-field]") : null;
+    if (!field) return null;
+    const group = node.querySelectorAll('[data-field="' + cssEsc(field.dataset.field) + '"]');
+    const idx = Array.prototype.indexOf.call(group, field);
+    if (idx < 0) return null;
+    return { field: field.dataset.field, idx: idx };
+  } catch (err) { return null; }
+}
+/** Best-effort focus restore after a line rebuild; a miss is a silent no-op. */
+function restoreLineFocus(node, refocus) {
+  if (!refocus) return;
+  try {
+    const group = node.querySelectorAll('[data-field="' + cssEsc(refocus.field) + '"]');
+    if (!group.length) return;
+    const target = group[Math.min(refocus.idx, group.length - 1)];
+    if (target && typeof target.focus === "function") target.focus({ preventScroll: true });
+  } catch (err) { /* silent no-op */ }
 }
 function cssEsc(s) { return String(s).replace(/["\\]/g, "\\$&"); }
 
@@ -2515,6 +2555,12 @@ function wire() {
   const pv = document.getElementById("preview");
   pv.addEventListener("click", function (e) {
     if (draft().polish) return;                 // polishing: clicks edit text, not jump
+    const blank = e.target.closest ? e.target.closest(".pv-blank") : null;
+    if (blank && blank.dataset.field) {
+      const blankLine = blank.closest(".pv-line");
+      jumpToField(blank.dataset.field, blankLine ? blankLine.dataset.line : null);
+      return;
+    }
     const span = e.target.closest ? e.target.closest(".pv-line") : null;
     if (span && span.dataset.line) jumpToLine(span.dataset.line);
   });
