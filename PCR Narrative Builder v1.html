@@ -210,7 +210,7 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
   flex-shrink: 0; width: 20px; height: 27px;
   display: flex; align-items: center; justify-content: center;
   border: 1px solid var(--border); border-radius: var(--radius-sm);
-  background: transparent; cursor: grab; padding: 0;
+  background: transparent; cursor: grab; padding: 0; touch-action: none;
   opacity: 0; transition: opacity .12s ease;
 }
 .ws-line > .ws-handle { margin-top: 5px; }
@@ -238,9 +238,20 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 .ws-sec[data-unit] > .ws-sechead { justify-content: flex-start; }
 .ws-sec[data-unit] > .ws-sechead > .ws-sectools { margin-left: auto; }
 
-/* drag-state hooks: defined now, unused until piece 4 wires the events that toggle them */
+/* the drag lift needs an offset parent, and this is the only positioned ancestor
+   between a unit and the page: without it, left/top would resolve against <body>. */
+#worksheet { position: relative; }
+
+/* drag-state hooks, wired by piece 4: .ws-lifted/.ws-drop-slot/body.ws-dragging back
+   the pointer drag; .ws-kbgrab is its keyboard twin — same lifted look, but static in
+   flow, since a grabbed-not-yet-moved unit hasn't left the document order. */
 .ws-line.ws-lifted, .ws-sec.ws-lifted {
   position: absolute; z-index: 40; background: var(--sheet);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  box-shadow: 0 6px 16px rgba(60,50,30,.18);
+}
+.ws-line.ws-kbgrab, .ws-sec.ws-kbgrab {
+  position: static; background: var(--sheet);
   border: 1px solid var(--border); border-radius: var(--radius-sm);
   box-shadow: 0 6px 16px rgba(60,50,30,.18);
 }
@@ -1295,7 +1306,8 @@ function makeDraft(label, unit) {
 }
 let state = { drafts: [makeDraft("Call")], activeDraft: 0 };
 /** UI-only, never persisted */
-const ui = { expanded: {}, open: {}, copyPending: false, polishWarned: false, focusKey: null, condSig: "" };
+const ui = { expanded: {}, open: {}, copyPending: false, polishWarned: false, focusKey: null, condSig: "",
+             dragging: false };
 
 function draft() { return state.drafts[state.activeDraft]; }
 function val(id) { return draft().values[id]; }
@@ -2022,6 +2034,7 @@ function unitWrap(host, unitKey, ctx, extraClass) {
  * old fixed walk (shell sections → slot at anchor → disposition) byte-for-byte.
  */
 function renderWorksheet() {
+  if (ui.dragging) return;      // a rebuild mid-drag would destroy the dragged node
   const ctx = context();
   const ws = document.getElementById("worksheet");
   const hadFocus = ws.contains(document.activeElement);
@@ -3419,6 +3432,472 @@ function toggleAddBlock() {
 
 /* ============================ wiring ============================ */
 
+/* ============================ DRAG ============================ */
+/*
+ * Turns a gesture into one call to applyMove() (see ORDERING) plus the visual
+ * choreography — lift, follow, settle — that makes the result read as a direct
+ * manipulation rather than a jump cut. Two input paths converge on the same
+ * {unitKey, toRegion, toIndex} shape applyMove() already expects:
+ *   pointer   grab a handle, drag a placeholder around, release to commit or Escape
+ *             to cancel (mirrors the accepted mockup's interaction).
+ *   keyboard  grab a handle with Enter/Space, walk it one slot at a time with the
+ *             arrows, committing on every step.
+ * Nothing here mutates the draft directly — applyMove() does that — and nothing here
+ * decides paragraphs — adoptPara is always null, leaving that to the engine's own
+ * neighbour inheritance (see applyMove's docstring).
+ */
+
+let dragState = null;      // non-null only while a pointer drag is in progress
+let scrollRAF = null;      // the auto-scroll loop's requestAnimationFrame handle
+let grabbedHandle = null;  // the .ws-handle currently in keyboard "grabbed" mode, if any
+
+/**
+ * The regionKey a DOM node's position names: an owner box's whole .ws-sec (checked
+ * first, since a box's .ws-sec ALSO carries data-section — see ownerBox), a fixed
+ * shell/disposition section, or TOP_REGION once the node has climbed out of every
+ * .ws-sec (a box dropped at the top level, or a line with no section of its own).
+ * Works on any node — a placeholder mid-drag, or a rendered unit for the keyboard
+ * path — because it only ever reads ancestry, never drag state.
+ * @param {Element} node @returns {string} a regionKey, or TOP_REGION
+ */
+function dropRegionOf(node) {
+  const owner = node.closest('[data-unit^="owner:"]');
+  if (owner) return owner.dataset.unit;
+  const sec = node.closest(".ws-sec[data-section]");
+  if (sec) return sec.dataset.section === "disposition" ? "sec:disposition" : "sec:" + sec.dataset.section;
+  return TOP_REGION;
+}
+
+/** The unit key a top-level child of #worksheet names: a box or loose line's own
+ *  data-unit, else the fixed section it is (disposition needs its own translation;
+ *  every other section's id IS its regionKey suffix). A box carries both data-unit
+ *  and data-section (see ownerBox) — data-unit wins by being checked first. */
+function topKeyOf(node) {
+  if (node.dataset.unit) return node.dataset.unit;
+  return node.dataset.section === "disposition" ? "sec:disposition" : "sec:" + node.dataset.section;
+}
+
+/** The next LINE unit's key after `node` in DOM order — not necessarily in the same
+ *  region, which is exactly how a drop at a region's edge migrates a line across the
+ *  boundary. Null past the last line on the worksheet, which means "drop is last". */
+function nextLineKey(node) {
+  let n = node.nextElementSibling;
+  while (n) {
+    if (n.matches(".ws-line[data-unit]")) return n.dataset.unit;
+    n = n.nextElementSibling;
+  }
+  return null;
+}
+
+/** The next top-level sibling's key after `node` — a box, a loose line, or a fixed
+ *  section (a box may sit next to any of them; a box itself only ever lives at the
+ *  top — see applyMove's TOP_REGION rule). Null past the last top-level child. */
+function nextTopKey(node) {
+  let n = node.nextElementSibling;
+  while (n) {
+    if (n.matches(".ws-sec, .ws-line.ws-loose")) return topKeyOf(n);
+    n = n.nextElementSibling;
+  }
+  return null;
+}
+
+/** Every LINE unit on the worksheet that could receive the drop — everything except
+ *  the one being dragged. A fresh querySelectorAll on every move is fine at this
+ *  scale (a single narrative's worth of rows), and re-scanning each time means a
+ *  region that just changed shape (auto-scroll revealed new rows) is never stale. */
+function lineCandidates() {
+  const all = document.querySelectorAll("#worksheet .ws-line[data-unit]");
+  const out = [];
+  for (let i = 0; i < all.length; i++) {
+    if (all[i] !== dragState.unitEl) out.push(all[i]);
+  }
+  return out;
+}
+
+/** Every top-level child a dragged BOX could land next to: other boxes and loose
+ *  lines, never a fixed section's own .ws-rows (a box only ever lives at the top). */
+function boxCandidates() {
+  const ws = document.getElementById("worksheet");
+  const out = [];
+  for (let i = 0; i < ws.children.length; i++) {
+    const c = ws.children[i];
+    if (c === dragState.unitEl || c === dragState.placeholder) continue;
+    if (c.matches(".ws-sec, .ws-line.ws-loose")) out.push(c);
+  }
+  return out;
+}
+
+/** The .ws-rows the pointer sits over vertically, if any. Used only to catch a
+ *  region the midpoint scan has no local candidate to anchor on (see
+ *  updateLineSlot) — every other placement decision comes from the candidates
+ *  themselves, not from geometry against the container. */
+function rowsUnderPointer(clientY) {
+  const all = document.querySelectorAll("#worksheet .ws-rows");
+  for (let i = 0; i < all.length; i++) {
+    const r = all[i].getBoundingClientRect();
+    if (clientY >= r.top && clientY <= r.bottom) return all[i];
+  }
+  return null;
+}
+
+/** Move the placeholder to sit immediately before `before` (or, with `before` null,
+ *  at the end of `parent`) — but only when it isn't sitting there already. Skipping
+ *  the redundant write matters because this runs on every pointermove and every
+ *  auto-scroll frame; inserting a node exactly where it already is is still a
+ *  mutation (and a reflow) as far as the browser is concerned. */
+function placeSlot(parent, before) {
+  const ph = dragState.placeholder;
+  if (ph.parentNode === parent && ph.nextSibling === before) return;
+  parent.insertBefore(ph, before || null);
+}
+
+/**
+ * Where would a LINE land right now? First, the midpoint rule: the first candidate
+ * whose vertical centre is below the pointer wins, and the placeholder goes
+ * immediately before it; past the last candidate, the placeholder goes after it.
+ * Then a check the pure midpoint rule can't make on its own: if the pointer sits over
+ * some section's rows and NONE of that section's own lines were among the
+ * candidates (an empty region, or the disposition section before a disposition is
+ * picked, whose only content is the unwrapped picker row), land there instead. That
+ * is the one case where "nearest candidate globally" and "the region visually under
+ * the pointer" disagree.
+ */
+function updateLineSlot(clientY) {
+  const candidates = lineCandidates();
+  let target = null;
+  for (let i = 0; i < candidates.length; i++) {
+    const r = candidates[i].getBoundingClientRect();
+    if (clientY < (r.top + r.bottom) / 2) { target = candidates[i]; break; }
+  }
+  const hovered = rowsUnderPointer(clientY);
+  if (hovered && !candidates.some(function (c) { return hovered.contains(c); })) {
+    placeSlot(hovered, null);
+    return;
+  }
+  if (target) { placeSlot(target.parentNode, target); return; }
+  if (candidates.length) {
+    const last = candidates[candidates.length - 1];
+    placeSlot(last.parentNode, last.nextSibling);
+  }
+}
+
+/** Where would a BOX land right now? Same midpoint rule as updateLineSlot, but over
+ *  top-level children only — a box never enters a section's rows. */
+function updateBoxSlot(clientY) {
+  const ws = document.getElementById("worksheet");
+  const candidates = boxCandidates();
+  let target = null;
+  for (let i = 0; i < candidates.length; i++) {
+    const r = candidates[i].getBoundingClientRect();
+    if (clientY < (r.top + r.bottom) / 2) { target = candidates[i]; break; }
+  }
+  placeSlot(ws, target || null);
+}
+
+function updateDropSlot(clientY) {
+  if (dragState.isLine) updateLineSlot(clientY); else updateBoxSlot(clientY);
+}
+
+/* ---- auto-scroll ---- */
+
+const DRAG_EDGE = 56, DRAG_SCROLL_MAX = 14;
+
+function stopAutoScroll() {
+  if (scrollRAF) { cancelAnimationFrame(scrollRAF); scrollRAF = null; }
+}
+
+/** Scroll the WINDOW (the worksheet flows with the page) while the pointer sits
+ *  within DRAG_EDGE of the top or bottom, at a step proportional to how deep into
+ *  the zone it is, capped at DRAG_SCROLL_MAX per frame. Re-running the slot update
+ *  each scrolled frame matters here specifically: rows keep flowing past a pointer
+ *  that itself never moves, so without this the placeholder would freeze at
+ *  wherever the last real pointermove left it. */
+function startAutoScroll() {
+  if (scrollRAF) return;
+  const step = function () {
+    if (!dragState) { scrollRAF = null; return; }
+    const y = dragState.lastY, vh = window.innerHeight;
+    let delta = 0;
+    if (y < DRAG_EDGE) delta = -DRAG_SCROLL_MAX * (DRAG_EDGE - y) / DRAG_EDGE;
+    else if (y > vh - DRAG_EDGE) delta = DRAG_SCROLL_MAX * (y - (vh - DRAG_EDGE)) / DRAG_EDGE;
+    if (!delta) { scrollRAF = null; return; }
+    window.scrollBy(0, delta);
+    updateDropSlot(y);
+    scrollRAF = requestAnimationFrame(step);
+  };
+  scrollRAF = requestAnimationFrame(step);
+}
+
+/* ---- pointer drag ---- */
+
+/** The one delegated grab point for every handle on the worksheet. Only a
+ *  primary-button press on a handle, with no drag already in progress, starts
+ *  anything; a handle inside an inert (.ws-na) section never receives the
+ *  pointerdown at all (native `inert` blocks it), so there is nothing to guard
+ *  there beyond simply not crashing on the absence of an event. */
+function onHandlePointerDown(e) {
+  if (dragState || e.button !== 0) return;
+  const handle = e.target.closest ? e.target.closest(".ws-handle") : null;
+  if (!handle) return;
+  const unitEl = handle.closest("[data-unit]");
+  if (!unitEl) return;
+  e.preventDefault();
+  releaseGrabbed();                    // a pointer drag supersedes any keyboard grab
+  handle.setPointerCapture(e.pointerId);
+
+  const ws = document.getElementById("worksheet");
+  const wsRect = ws.getBoundingClientRect();
+  const rect = unitEl.getBoundingClientRect();
+  const unitKey = unitEl.dataset.unit;
+  const isLine = unitEl.classList.contains("ws-line");
+
+  // Recorded now, compared against at drop time: the toIndex that would leave the
+  // unit exactly where it already is (see finishDrag's "did anything change" guard).
+  const ctx = context();
+  const originRegion = currentRegionOf(unitKey, ctx.d);
+  const originIndex = (originRegion === TOP_REGION ? effectiveTopOrder(ctx) : regionUnits(originRegion, ctx))
+    .indexOf(unitKey);
+
+  const placeholder = el("div", "ws-drop-slot");
+  placeholder.style.height = rect.height + "px";
+  unitEl.parentNode.insertBefore(placeholder, unitEl);
+
+  const originLeft = rect.left - wsRect.left, originTop = rect.top - wsRect.top;
+  unitEl.classList.add("ws-lifted");
+  unitEl.style.width = rect.width + "px";
+  unitEl.style.left = originLeft + "px";
+  unitEl.style.top = originTop + "px";
+  unitEl.style.transform = "translate(2px, 0px) scale(1.01)";
+
+  document.body.classList.add("ws-dragging");
+  ui.dragging = true;
+
+  dragState = {
+    handle: handle, unitEl: unitEl, placeholder: placeholder,
+    unitKey: unitKey, isLine: isLine, pointerId: e.pointerId,
+    startY: e.clientY, lastY: e.clientY,
+    originLeft: originLeft, originTop: originTop,
+    originRegion: originRegion, originIndex: originIndex
+  };
+
+  handle.addEventListener("pointermove", onHandlePointerMove);
+  handle.addEventListener("pointerup", onHandlePointerUp);
+  handle.addEventListener("pointercancel", onHandlePointerUp);
+  document.addEventListener("keydown", onDragEscape, true);
+}
+
+function onHandlePointerMove(e) {
+  if (!dragState || e.pointerId !== dragState.pointerId) return;
+  dragState.lastY = e.clientY;
+  const dy = e.clientY - dragState.startY;
+  dragState.unitEl.style.transform = "translate(2px, " + dy + "px) scale(1.01)";
+  updateDropSlot(e.clientY);
+  startAutoScroll();
+}
+
+function onHandlePointerUp(e) {
+  if (!dragState || e.pointerId !== dragState.pointerId) return;
+  const ds = dragState;
+  detachDragListeners(ds);
+  settleDrag(ds, false);
+}
+
+/** Wired only while a drag is live (see onHandlePointerDown / detachDragListeners),
+ *  on document rather than the handle: focus may not even be on the handle (a
+ *  pointerdown's default focusing action was prevented), so the handle alone would
+ *  miss the keypress. Capture phase so this always runs before anything else
+ *  (a modal's own Escape handling, in particular) gets a look at the same event. */
+function onDragEscape(e) {
+  if (!dragState || e.key !== "Escape") return;
+  e.stopPropagation();
+  const ds = dragState;
+  detachDragListeners(ds);
+  settleDrag(ds, true);
+}
+
+function detachDragListeners(ds) {
+  ds.handle.removeEventListener("pointermove", onHandlePointerMove);
+  ds.handle.removeEventListener("pointerup", onHandlePointerUp);
+  ds.handle.removeEventListener("pointercancel", onHandlePointerUp);
+  document.removeEventListener("keydown", onDragEscape, true);
+  stopAutoScroll();
+}
+
+/**
+ * The "fall back in" settle: animate left/top/transform to the target rect, then
+ * commit. `cancelled` targets the ORIGIN rect recorded at grab (Escape); otherwise
+ * it targets wherever the placeholder ended up. A transitionend on the transform
+ * property ends the animation; a timer just past the transition's own duration is
+ * the backstop for whenever that event doesn't arrive (reduced motion, a start
+ * position identical to the end position).
+ */
+function settleDrag(ds, cancelled) {
+  const ws = document.getElementById("worksheet");
+  const wsRect = ws.getBoundingClientRect();
+  let toLeft = ds.originLeft, toTop = ds.originTop;
+  if (!cancelled) {
+    const r = ds.placeholder.getBoundingClientRect();
+    toLeft = r.left - wsRect.left;
+    toTop = r.top - wsRect.top;
+  }
+  ds.unitEl.style.transition = "left .18s ease, top .18s ease, transform .18s ease";
+  ds.unitEl.getBoundingClientRect();    // flush layout so the transition has a start point
+  ds.unitEl.style.left = toLeft + "px";
+  ds.unitEl.style.top = toTop + "px";
+  ds.unitEl.style.transform = "none";
+
+  let settled = false;
+  const timer = setTimeout(finish, 220);
+  function finish(ev) {
+    if (settled || (ev && ev.propertyName !== "transform")) return;
+    settled = true;
+    clearTimeout(timer);
+    ds.unitEl.removeEventListener("transitionend", finish);
+    finishDrag(ds, cancelled);
+  }
+  ds.unitEl.addEventListener("transitionend", finish);
+}
+
+/** Compute where the drop lands, restore the DOM enough not to confuse the renderer
+ *  (it is about to be fully rebuilt either way), then commit — but only when the
+ *  drop actually moved something: picking a unit up and putting it back down exactly
+ *  where it was must not "customize" the order (which would reveal Reset order for
+ *  no visible change). */
+function finishDrag(ds, cancelled) {
+  let toRegion = null, toIndex = 0, changed = false;
+  if (!cancelled) {
+    toRegion = dropRegionOf(ds.placeholder);
+    toIndex = dropIndexOf(ds, toRegion);
+    changed = toRegion !== ds.originRegion || toIndex !== ds.originIndex;
+  }
+
+  if (ds.placeholder.parentNode) ds.placeholder.parentNode.removeChild(ds.placeholder);
+  ds.unitEl.classList.remove("ws-lifted");
+  ds.unitEl.style.cssText = "";
+  document.body.classList.remove("ws-dragging");
+  ui.dragging = false;
+  try { ds.handle.releasePointerCapture(ds.pointerId); } catch (err) { /* already released */ }
+  dragState = null;
+
+  const moved = changed && applyMove({ unitKey: ds.unitKey, toRegion: toRegion, toIndex: toIndex, adoptPara: null });
+  if (moved) { structuralEdit(); scheduleSave(); }
+  else renderWorksheet();
+}
+
+/** The index applyMove() wants: the destination list's position AFTER the dragged
+ *  unit is removed. Found from the NEXT unit key after the placeholder, not from
+ *  counting DOM children (a hidden order entry would skew a plain count). */
+function dropIndexOf(ds, toRegion) {
+  const ctx = context();
+  const list = (toRegion === TOP_REGION ? effectiveTopOrder(ctx) : regionUnits(toRegion, ctx))
+    .filter(function (k) { return k !== ds.unitKey; });
+  const nextKey = ds.isLine ? nextLineKey(ds.placeholder) : nextTopKey(ds.placeholder);
+  const at = nextKey ? list.indexOf(nextKey) : -1;
+  return at >= 0 ? at : list.length;
+}
+
+/* ---- keyboard reorder ---- */
+
+/** Grab or release one handle's keyboard-reorder state, keeping it exclusive: only
+ *  one unit reads as "grabbed" at a time, so a stray Enter somewhere else can never
+ *  leave a unit looking lifted while the arrows have moved on to a different one. */
+function setGrabbed(handle, unitEl, on) {
+  if (on && grabbedHandle && grabbedHandle !== handle) releaseGrabbed();
+  handle.setAttribute("aria-pressed", on ? "true" : "false");
+  unitEl.classList.toggle("ws-kbgrab", on);
+  grabbedHandle = on ? handle : null;
+}
+
+function releaseGrabbed() {
+  if (!grabbedHandle) return;
+  grabbedHandle.setAttribute("aria-pressed", "false");
+  const u = grabbedHandle.closest("[data-unit]");
+  if (u) u.classList.remove("ws-kbgrab");
+  grabbedHandle = null;
+}
+
+/**
+ * Keyboard parity for the drag, delegated on #worksheet like onWorksheetKey — the
+ * two never overlap in practice (a handle is never inside a .ws-field), but every
+ * key this handler acts on is stopped from bubbling regardless, so nothing above it
+ * ever double-reacts to the same press.
+ * Enter/Space toggle grabbed; while grabbed, arrows move one slot and commit
+ * immediately, Escape or Enter again releases. Not grabbed: arrows and Tab are left
+ * alone entirely (default scroll / normal tab order).
+ */
+function onHandleKey(e) {
+  const handle = e.target.closest ? e.target.closest(".ws-handle") : null;
+  if (!handle) return;
+  const unitEl = handle.closest("[data-unit]");
+  if (!unitEl) return;
+  const grabbed = handle.getAttribute("aria-pressed") === "true";
+
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault(); e.stopPropagation();
+    // key-repeat on a held Enter/Space would otherwise toggle grabbed on/off at OS
+    // repeat rate; the arrows get no such guard — repeat-to-move several slots is
+    // the behavior a held arrow key should have.
+    if (!e.repeat) setGrabbed(handle, unitEl, !grabbed);
+    return;
+  }
+  if (!grabbed) return;
+  if (e.key === "Escape") {
+    e.preventDefault(); e.stopPropagation();
+    setGrabbed(handle, unitEl, false);
+    return;
+  }
+  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+    e.preventDefault(); e.stopPropagation();
+    moveGrabbedUnit(unitEl, e.key === "ArrowDown" ? 1 : -1);
+  }
+}
+
+/**
+ * One arrow-key step: find the unit's neighbour in DOM order (a line's neighbour is
+ * the next/previous .ws-line anywhere on the worksheet, which is what lets a step
+ * cross a section boundary; a box's neighbour is the next/previous top-level child
+ * only), commit a move that lands the unit on the near side of that neighbour, then
+ * refocus so repeated arrow presses keep working. dir is +1 (down/next) or -1
+ * (up/previous).
+ */
+function moveGrabbedUnit(unitEl, dir) {
+  const unitKey = unitEl.dataset.unit;
+  const isLine = unitEl.classList.contains("ws-line");
+  const all = isLine
+    ? Array.prototype.slice.call(document.querySelectorAll("#worksheet .ws-line[data-unit]"))
+    : Array.prototype.slice.call(document.getElementById("worksheet").children)
+        .filter(function (c) { return c.matches(".ws-sec, .ws-line.ws-loose"); });
+  const target = all[all.indexOf(unitEl) + dir];
+  if (!target) return;                 // already at that end
+
+  const ctx = context();
+  const toRegion = isLine ? dropRegionOf(target) : TOP_REGION;
+  const list = (toRegion === TOP_REGION ? effectiveTopOrder(ctx) : regionUnits(toRegion, ctx))
+    .filter(function (k) { return k !== unitKey; });
+  const targetKey = isLine ? target.dataset.unit : topKeyOf(target);
+  const idx = list.indexOf(targetKey);
+  let toIndex = dir > 0 ? idx + 1 : idx;
+  if (idx < 0 || toIndex < 0) toIndex = list.length;
+
+  if (!applyMove({ unitKey: unitKey, toRegion: toRegion, toIndex: toIndex, adoptPara: null })) return;
+  structuralEdit();
+  scheduleSave();
+  refocusHandle(unitKey);
+}
+
+/** After a keyboard move rebuilds the worksheet, the old handle is gone — find the
+ *  new one for the same unit, focus it, and restore the grabbed look so the next
+ *  arrow press has something to act on. */
+function refocusHandle(unitKey) {
+  const esc = cssEsc(unitKey);
+  const handle = unitKey.indexOf("owner:") === 0
+    ? document.querySelector('.ws-sec[data-unit="' + esc + '"] .ws-sechead .ws-handle')
+    : document.querySelector('[data-unit="' + esc + '"] .ws-handle');
+  if (!handle) return;
+  handle.focus();
+  setGrabbed(handle, handle.closest("[data-unit]"), true);
+}
+
 function wire() {
   const us = document.getElementById("unit-select");
   const uo = document.getElementById("unit-other");
@@ -3481,6 +3960,8 @@ function wire() {
     const first = row.querySelector(".ws-field");
     if (first && first.dataset.key !== ui.focusKey) focusFieldNode(first, false);
   });
+  ws.addEventListener("pointerdown", onHandlePointerDown);
+  ws.addEventListener("keydown", onHandleKey);
 }
 
 /* ============================ boot ============================ */
