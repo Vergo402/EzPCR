@@ -127,29 +127,30 @@ button:active { background: var(--tint); }
 
 /* padding and alignment are the same in both states: moving the cursor must not
    shift the rows around it — only the box changes. */
+/* one field per row, reading inline as "label: value". Padding and alignment are the
+   same focused or not: moving the cursor must not shift the rows around it. */
 .ws-row {
-  display: grid; grid-template-columns: 10.5em minmax(0, 1fr); gap: 3px 10px;
-  align-items: baseline; padding: 5px 8px; font-size: 13px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;
+  padding: 5px 8px; font-size: 13px;
   border: 1px solid transparent; border-radius: var(--radius-sm); scroll-margin-top: 78px;
 }
 .ws-row:hover { background: var(--tint); }
 .ws-row.ws-focused {
+  align-items: center;
   background: var(--sheet); border-color: var(--ink); box-shadow: 0 1px 3px rgba(60,50,30,.10);
 }
 /* wraps at spaces, hyphens, and the zero-width breaks wrapLabel puts after each "/" —
-   never mid-word (break-word is only a last resort for a token wider than the column) */
-.ws-label { font-size: 11.5px; color: var(--text-2); letter-spacing: .03em; overflow-wrap: break-word; word-break: normal; }
-.ws-fields { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; min-width: 0; }
-.ws-row.ws-focused .ws-fields { align-items: center; gap: 6px; }
-.ws-sep { color: var(--border-strong); }
-.ws-none { color: var(--text-faint); }
-.ws-rownote { grid-column: 2; font-size: 11px; color: var(--text-faint); display: none; }
+   never mid-word (break-word is only a last resort for a token wider than the row) */
+.ws-label, .ws-flabel { overflow-wrap: break-word; word-break: normal; }
+.ws-label { font-size: 11.5px; color: var(--text-2); letter-spacing: .03em; }
+.ws-rownote { flex-basis: 100%; font-size: 11px; color: var(--text-faint); display: none; }
 .ws-row.ws-focused .ws-rownote { display: block; }
 .ws-deferred .ws-label { color: var(--text-faint); }
+.ws-literal .ws-litval { color: var(--text-faint); font-style: italic; min-width: 0; }
 
 /* field states: confirmed / proposed / amber */
-.ws-field { display: inline-flex; align-items: baseline; gap: 4px; max-width: 100%; border-radius: 3px; }
-.ws-flabel { font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+.ws-field { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 4px; max-width: 100%; border-radius: 3px; }
+.ws-flabel { font-size: 11px; color: var(--text-faint); }
 .ws-fval { overflow-wrap: anywhere; }
 .ws-check { font-size: 10px; color: var(--green-text); }
 .ws-set .ws-fval { color: var(--ink); }
@@ -256,8 +257,6 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
   #panes { grid-template-columns: minmax(0, 1fr); }
   #preview-pane { position: static; max-height: none; }
   .topbar-controls { margin-left: 0; width: 100%; }
-  .ws-row { grid-template-columns: minmax(0, 1fr); }
-  .ws-rownote { grid-column: 1; }
 }
 @media (min-width: 1100px) { #panes { padding: 20px; gap: 20px; } }
 </style>
@@ -654,6 +653,23 @@ const COND_IDS = {
   headToToePrimary: ["traumaGeneral", "traumaMajor", "traumaMinor", "burns"]
 };
 const CHAR_AMBER = 3200, CHAR_RED = 4000;
+
+/* -------------------------------------------------------------------------
+   The narrative is FOUR paragraphs. Sentence order is unchanged — only the
+   paragraph boundaries live here. Everything the assembler emits lands in a
+   bucket; anything unlisted (every stacked block/template in the slot) falls
+   to 3, and an empty bucket disappears rather than leaving a blank line.
+   ------------------------------------------------------------------------- */
+const PARA = { count: 4, slot: 3 };
+const PARA_SECTIONS = { sh_dispatch: 1, sh_primary: 1, sh_mental: 1, sh_secondary: 3, sh_ongoing: 4 };
+/** sh_assessment is the one section that splits across paragraphs, at line level. */
+const PARA_LINES = { sh_vitals_line: 2, sh_impression_line: 3 };
+function paraOf(sectionId, lineId) {
+  if (PARA_LINES[lineId]) return PARA_LINES[lineId];
+  if (PARA_SECTIONS[sectionId]) return PARA_SECTIONS[sectionId];
+  if (String(sectionId).indexOf("disp_") === 0) return 4;
+  return PARA.slot;
+}
 
 /* -------------------------------------------------------------------------
    DEFAULTS — clinical content, signed off. An unset field that has a default
@@ -1094,9 +1110,7 @@ function renderLine(line, ctx, sectionId, sectionName, missing) {
       const o = (line.options || []).find(function (x) { return x.label === lab; });
       if (!o) return;
       (o.lines || []).forEach(function (sub) {
-        const got = renderLine(sub, ctx, sectionId, sectionName, missing);
-        if (got.length && sub.joinPrev && rows.length) got[0].join = true;
-        rows = rows.concat(got);
+        rows = rows.concat(renderLine(sub, ctx, sectionId, sectionName, missing));
       });
     });
     return rows;
@@ -1124,20 +1138,19 @@ function renderLine(line, ctx, sectionId, sectionName, missing) {
     raw = renderParts(fired ? line.fired : line.normal, c);
   }
   if (stripSentinels(raw).trim() === "") return [];
-  return commit([{ lineId: line.id, raw: raw, withheld: withheld, proposed: proposed }]);
+  return commit([{ lineId: line.id, raw: raw, withheld: withheld, proposed: proposed,
+                   para: paraOf(sectionId, line.id) }]);
 }
 
 /**
  * @returns {{id:string,name:string,lines:Array}|null} a rendered section, or null when empty
- * A line marked joinPrev flags its first emitted row to ride the previously RENDERED
- * row of the SAME section (addendum-1 §A); with no previous row it stands alone.
+ * DOC's per-line joinPrev is subsumed: everything inside a paragraph now flows as one
+ * run of sentences, so there is no longer a per-row join to flag.
  */
 function renderSection(sectionId, sectionName, lines, ctx, missing) {
   let rows = [];
   (lines || []).forEach(function (l) {
-    const got = renderLine(l, ctx, sectionId, sectionName, missing);
-    if (got.length && l.joinPrev && rows.length) got[0].join = true;
-    rows = rows.concat(got);
+    rows = rows.concat(renderLine(l, ctx, sectionId, sectionName, missing));
   });
   if (!rows.length) return null;
   return { id: sectionId, name: sectionName, lines: rows };
@@ -1261,9 +1274,8 @@ function assemble(ctx) {
 const DISPO_LINE = { id: "disposition", kind: "dispo", label: "Disposition" };
 
 /**
- * Concatenate one section's rows. A row flagged `join` (line-level joinPrev) rides the
- * previously EMITTED row with a single space; everything else gets a hard return.
- * Both text and HTML go through this so copy and preview can never disagree.
+ * Run one paragraph's rows together: sentences inside a paragraph flow with a single
+ * space. Both text and HTML go through this so copy and preview can never disagree.
  * @param {Array} rows @param {function(Object):string} paint @returns {string}
  */
 function joinRows(rows, paint) {
@@ -1271,10 +1283,25 @@ function joinRows(rows, paint) {
   (rows || []).forEach(function (l) {
     const t = paint(l);
     if (t === "") return;
-    if (out === "") { out = t; return; }   // nothing emitted yet: joinPrev stands alone
-    out += (l.join ? " " : "\n") + t;
+    out += (out === "" ? "" : " ") + t;
   });
   return out;
+}
+
+/**
+ * Deal every emitted row into its paragraph, keeping assembly order within each.
+ * @returns {Array<Array<Object>>} PARA.count buckets, in order (empties included)
+ */
+function paragraphs(asm) {
+  const buckets = [];
+  for (let i = 0; i < PARA.count; i++) buckets.push([]);
+  asm.sections.forEach(function (s) {
+    s.lines.forEach(function (l) {
+      const i = (l.para || PARA.slot) - 1;
+      buckets[i >= 0 && i < buckets.length ? i : PARA.slot - 1].push(l);
+    });
+  });
+  return buckets;
 }
 
 /**
@@ -1295,8 +1322,8 @@ function blankText(raw) {
 
 /** @returns {string} the narrative exactly as it will be pasted (no sentinels) */
 function assemblyText(asm) {
-  return asm.sections.map(function (s) {
-    return joinRows(s.lines, function (l) { return blankText(l.raw); });
+  return paragraphs(asm).map(function (rows) {
+    return joinRows(rows, function (l) { return blankText(l.raw); });
   }).filter(function (t) { return t !== ""; }).join("\n\n");
 }
 
@@ -1309,8 +1336,8 @@ function assemblyHtml(asm) {
     missingByLine[m.lineId].push(m);
   });
   const blankCursor = {};
-  return asm.sections.map(function (s) {
-    return joinRows(s.lines, function (l) {
+  return paragraphs(asm).map(function (rows) {
+    return joinRows(rows, function (l) {
       const body = esc(l.raw).replace(/[\s\S]*?/g, function (match) {
         const i = blankCursor[l.lineId] || 0;
         blankCursor[l.lineId] = i + 1;
@@ -1519,33 +1546,45 @@ function dispositionSection(host, ctx) {
 
 /* ---- rows and fields ---- */
 
+/** A line with nothing to answer still asserts something in the narrative ("Obvious death
+ *  criteria reviewed: not met."), so the worksheet shows it read-only rather than letting
+ *  it emit unseen. Such a line is all literals, so joining them reproduces it exactly. */
+function literalRow(host, line, ctx) {
+  const row = el("div", "ws-row ws-literal");
+  row.dataset.line = line.id;
+  row.appendChild(el("span", "ws-label", wrapLabel(line.label || line.id)));
+  row.appendChild(el("span", "ws-litval", (line.parts || [])
+    .filter(function (p) { return typeof p === "string"; })
+    .map(function (p) { return replaceAllStr(p, UNIT_TOKEN, ctx.unit); }).join("")));
+  host.appendChild(row);
+}
+
 /** A slash-joined label ("Airway/breathing/pulse/skin") is one unbreakable word to the
- *  layout engine. A zero-width space after each "/" gives it legal break points, so the
- *  narrow label column never has to split a word down the middle. */
+ *  layout engine. A zero-width space after each "/" gives it legal break points, so a
+ *  label that outruns its row never has to split a word down the middle. */
 function wrapLabel(s) { return replaceAllStr(String(s), "/", "/\u200B"); }
 
+/** One row per FIELD. The field's own label carries the row, so the line label only
+ *  surfaces where there is no field to name it: a deferred line, or a literal one. */
 function lineRow(host, line, ctx) {
-  const row = el("div", "ws-row ws-k-" + line.kind);
-  row.dataset.line = line.id;
-  const bag = el("span", "ws-fields");
   if (lineDeferred(line, ctx)) {
-    row.classList.add("ws-deferred");
+    const row = el("div", "ws-row ws-deferred");
+    row.dataset.line = line.id;
     row.appendChild(el("span", "ws-label", wrapLabel(line.label || line.id)));
-    bag.appendChild(fieldNode({ line: line, id: "__open__", type: "open" }, ctx));
-    row.appendChild(bag);
+    row.appendChild(fieldNode({ line: line, id: "__open__", type: "open" }, ctx));
     host.appendChild(row);
     return;
   }
-  row.appendChild(el("span", "ws-label", wrapLabel(line.label || line.id)));
   const fields = lineFields(line, ctx);
+  if (!fields.length) literalRow(host, line, ctx);
   fields.forEach(function (f, i) {
-    if (i) bag.appendChild(el("span", "ws-sep", "·"));
-    bag.appendChild(fieldNode(f, ctx));
+    const row = el("div", "ws-row ws-k-" + line.kind);
+    row.dataset.line = line.id;
+    row.appendChild(fieldNode(f, ctx));
+    // the line's note belongs to the line, so it rides its first field only
+    if (i === 0 && line.note) row.appendChild(el("span", "ws-rownote", line.note));
+    host.appendChild(row);
   });
-  if (!fields.length) bag.appendChild(el("span", "ws-none", "—"));
-  row.appendChild(bag);
-  if (line.note) row.appendChild(el("span", "ws-rownote", line.note));
-  host.appendChild(row);
   if (line.kind === "fork") {
     const sub = el("div", "ws-sub");
     forkSel(line.id).forEach(function (lab) {
@@ -1604,11 +1643,12 @@ function partFields(parts, line, ctx, out) {
 }
 
 function fieldLabel(f) {
+  if (f.type === "open") return "";              // its row already shows the line label
   if (f.type === "aox") return "AOx";
   if (f.type === "text" || f.type === "pills" || f.type === "chips") {
     return fieldTail(f.id, f.line.id, f.p && f.p.hint);
   }
-  return "";                                     // structural fields read as bare values
+  return f.line.label || f.line.id;              // tri / esc / fork / dispo take their line's
 }
 
 function fieldEntry(f) { return ui.open[fieldKey(f.line.id, f.id)] || null; }
@@ -1684,7 +1724,7 @@ function fieldNode(f, ctx) {
 }
 function fieldSummary(n, f, st) {
   const lab = fieldLabel(f);
-  if (lab) n.appendChild(el("span", "ws-flabel", lab + ":"));
+  if (lab) n.appendChild(el("span", "ws-flabel", wrapLabel(lab) + ":"));
   n.appendChild(el("span", "ws-fval" + fieldTone(f), fieldValueText(f)));
   if (st === "set") n.appendChild(el("span", "ws-check", "✓"));
 }
@@ -1702,7 +1742,7 @@ function fieldTone(f) {
 function fieldEditor(n, f, ctx) {
   n.classList.add("ws-editing");
   const lab = fieldLabel(f);
-  if (lab) n.appendChild(el("span", "ws-flabel", lab + ":"));
+  if (lab) n.appendChild(el("span", "ws-flabel", wrapLabel(lab) + ":"));
   const box = el("span", "ws-ctl");
   n.appendChild(box);
   if (f.type === "text") textControl(n, box, f);
