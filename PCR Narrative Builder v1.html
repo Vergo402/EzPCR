@@ -143,6 +143,9 @@ button:active { background: var(--tint); }
   align-items: center;
   background: var(--sheet); border-color: var(--ink); box-shadow: 0 1px 3px rgba(60,50,30,.10);
 }
+/* a field after a line's first (component pills, and the sum row that reads with
+   them) indents as a sub-row, same idea as .ws-sub but scoped to one line. */
+.ws-row.ws-sub-1 { margin-left: 14px; padding-left: 6px; border-left: 2px solid var(--border); }
 /* wraps at spaces, hyphens, and the zero-width breaks wrapLabel puts after each "/" —
    never mid-word (break-word is only a last resort for a token wider than the row) */
 .ws-label, .ws-flabel { overflow-wrap: break-word; word-break: normal; }
@@ -169,6 +172,12 @@ button:active { background: var(--tint); }
   border-bottom: 1px dotted var(--amber-text); padding-bottom: 1px;
 }
 .ws-open .ws-fval { color: var(--green-text); }
+/* a computed sum row: read-only, never a "field" for focus purposes — see
+   sumFieldNode(). Its value prints in the mono font like a typed number would. */
+.ws-sumfield { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; max-width: 100%; }
+.ws-sumval { font-family: var(--mono); color: var(--ink); }
+.ws-sumval.ws-sumval-empty { color: var(--text-faint); }
+.ws-sumauto { font-style: italic; opacity: .7; }
 
 /* the cursor's field: its real control, in an accent box */
 .ws-field.ws-editing { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -306,6 +315,8 @@ body.ws-dragging { user-select: none; -webkit-user-select: none; }
 .pill.on, .chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 500; }
 .modal-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .pill.aox-all { border: 1px dotted var(--green-text); color: var(--green-text); background: transparent; }
+/* a scored option pill: "N label", the number set off in weight 500 with a small gap */
+.pill-score b { font-weight: 500; margin-right: 3px; }
 
 /* ---- preview ---- */
 #preview-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
@@ -1267,6 +1278,10 @@ const LINE_INDEX = Object.create(null);
  * only the first of them to PRINT belongs in the narrative (DOC.meta.twins).
  */
 const TWIN_OF = Object.create(null);
+/** choice/scored-choice id -> the Part object itself (`{c:[...], id, ...}`). A sum's
+ *  components live in the same line, but rendering a sum needs each component's
+ *  option list (to map a picked label back to its `v`) without re-walking `parts`. */
+const PART_INDEX = Object.create(null);
 /** ownerKey -> Set of field ids (fills + choice ids) declared beneath it */
 const OWNER_FIELDS = Object.create(null);
 /** category name -> {type:"block"|"template", id} */
@@ -1296,8 +1311,11 @@ function collectFieldIds(line, bag) {
       else if (p.aox) bag.add(p.aox);
       else if (p.c) {
         bag.add(p.id); bag.add(p.id + "__other");
+        PART_INDEX[p.id] = p;
         p.c.forEach(function (o) { if (typeof o === "object" && o.parts) walk(o.parts); });
       } else if (p.g) walk(p.g);
+      // a sum has no stored value of its own — it contributes nothing to `bag`,
+      // so a line is only ever "touched" through its component scored fields.
     });
   };
   if (line.kind === "std") walk(line.parts);
@@ -1543,6 +1561,7 @@ function renderParts(parts, c) {
     if (p.f) t = renderFill(p, c);
     else if (p.c) t = renderChoice(p, c);
     else if (p.aox) t = renderAox(p, c);
+    else if (p.sum) t = renderSum(p, c);
     else return;
     const fid = partFieldId(p);
     if (t === "" && fid && fieldHidden(c.line.id, fid, c.ctx.d)) {
@@ -1563,7 +1582,7 @@ function renderParts(parts, c) {
 function lastFieldIndex(parts) {
   let last = -1;
   (parts || []).forEach(function (p, i) {
-    if (typeof p !== "string" && (p.f || p.c || p.aox || p.g)) last = i;
+    if (typeof p !== "string" && (p.f || p.c || p.aox || p.sum || p.g)) last = i;
   });
   return last;
 }
@@ -1572,6 +1591,7 @@ function partFieldId(p) {
   if (p.f) return p.f;
   if (p.c) return p.id;
   if (p.aox) return p.aox;
+  if (p.sum) return p.id;
   return null;
 }
 /**
@@ -1647,8 +1667,50 @@ function choiceOptionText(p, lab, c) {
   const o = (p.c || []).find(function (x) { return optLabel(x) === lab; });
   if (!o) return String(lab);
   if (typeof o === "string") return o;
+  // scored choice: the emitted text is the option's own `emit`, or its numeric `v`
+  // when no `emit` was authored (the stored value is still the option's `label`).
+  if (p.score) return o.emit != null ? String(o.emit) : String(o.v);
   if (o.parts) return renderParts(o.parts, c);
   return o.label;
+}
+
+/**
+ * Sum a scored choice field's picked option(s) back to its `v`. A sum is computed,
+ * never stored — this reads straight off `values`, using PART_INDEX to find each
+ * component's option list.
+ * @returns {{total:number, pickedCount:number, allPicked:boolean}}
+ */
+function sumTotal(p, d) {
+  const ids = p.sum || [];
+  let total = 0, pickedCount = 0;
+  ids.forEach(function (fid) {
+    const part = PART_INDEX[fid];
+    const sel = d.values[fid];
+    const multi = !!(part && part.multi);
+    const picked = multi ? (Array.isArray(sel) ? sel : []) : (nonEmpty(sel) ? [sel] : []);
+    if (!picked.length) return;
+    pickedCount++;
+    picked.forEach(function (lab) {
+      const o = part && (part.c || []).find(function (x) {
+        return typeof x === "object" && x.label === lab;
+      });
+      if (o && typeof o.v === "number") total += o.v;
+    });
+  });
+  return { total: total, pickedCount: pickedCount, allPicked: ids.length > 0 && pickedCount === ids.length };
+}
+
+/**
+ * @returns {string} the computed total (+ suffix) once every component is picked;
+ * an amber blank once SOME but not all components are picked (the line is already
+ * "in play" and the copy gate must see the gap); "" when nothing is picked yet, so
+ * an untouched line stays untouched. A sum is never `req` and never has a default.
+ */
+function renderSum(p, c) {
+  const r = sumTotal(p, c.ctx.d);
+  if (r.pickedCount === 0) return "";
+  if (!r.allPicked) return blankSpan(c, p.id, p.hint, "total", "missing", "___");
+  return String(r.total) + (p.suffix || "");
 }
 
 /* Orientation (A+Ox) is computed, not typed: one array of picked components drives
@@ -2642,7 +2704,7 @@ function lineRow(host, line, ctx) {
   fields.filter(function (f) { return !rowHidden(line, f, ctx.d); }).forEach(function (f, i) {
     const row = el("div", "ws-row ws-k-" + line.kind + (f.depth ? " ws-sub-" + f.depth : ""));
     row.dataset.line = line.id;
-    row.appendChild(fieldNode(f, ctx));
+    row.appendChild(f.type === "sum" ? sumFieldNode(f, ctx) : fieldNode(f, ctx));
     if (DELETABLE_FIELD[f.type]) row.appendChild(makeDeleteField(f));
     // the line's note belongs to the line, so it rides its first field only
     if (i === 0 && line.note) row.appendChild(el("span", "ws-rownote", line.note));
@@ -2667,6 +2729,12 @@ function lineRow(host, line, ctx) {
  * FIRST field carries the sentence (depth 0), everything else in the line reads as a
  * continuation of it (depth 1), and a blank that only exists because an option was
  * picked hangs off that option (depth 2).
+ *
+ * A sum has no reading-order home of its own: the DOC lists it BEFORE its
+ * components (so the sentence can say "GCS 13 (E3 V4 M6)"), but the worksheet
+ * tabs through it AFTER them (E, V, M, then total) — reorderSums fixes that up
+ * once the raw walk is done. `depth` marks every field after a line's first as
+ * a sub-row (component pills, and the sum row that reads with them).
  * @returns {Array<{line:Object, id:string, type:string, depth:number, p:Object=}>}
  */
 function lineFields(line, ctx) {
@@ -2685,7 +2753,22 @@ function lineFields(line, ctx) {
   } else {
     partFields(line.parts, line, ctx, out, 0);
   }
-  return out;
+  const ordered = reorderSums(out);
+  ordered.forEach(function (f, i) { f.depth = i === 0 ? 0 : Math.max(1, f.depth || 1); });
+  return ordered;
+}
+/** Move each sum entry to just after the last of its listed component ids. */
+function reorderSums(out) {
+  const sums = [], rest = [];
+  out.forEach(function (f) { (f.type === "sum" ? sums : rest).push(f); });
+  if (!sums.length) return rest;
+  sums.forEach(function (s) {
+    const ids = s.p.sum || [];
+    let idx = -1;
+    rest.forEach(function (g, j) { if (ids.indexOf(g.id) >= 0) idx = j; });
+    rest.splice(idx + 1, 0, s);
+  });
+  return rest;
 }
 /** @param {number} [depth] the floor for these parts: 0 at line level, 2 inside a
  *  picked option's own parts. The first field of the whole line always lands at 0. */
@@ -2712,6 +2795,7 @@ function partFields(parts, line, ctx, out, depth) {
       });
       return;
     }
+    if (p.sum) { push({ line: line, id: p.id, type: "sum", p: p }); return; }
     if (p.aox) { push({ line: line, id: p.aox, type: "aox", p: p }); return; }
     if (p.g) { partFields(p.g, line, ctx, out, base); return; }
   });
@@ -2730,6 +2814,7 @@ function rowHidden(line, f, d) {
 function fieldLabel(f) {
   if (f.type === "open") return "";              // its row already shows the line label
   if (f.type === "aox") return "AOx";
+  if (f.type === "sum") return "total";           // a computed field id doesn't read as English
   if (f.type === "text" || f.type === "pills" || f.type === "chips") {
     return fieldTail(f.id, f.line.id, f.p && f.p.hint);
   }
@@ -2744,6 +2829,7 @@ function fieldSet(f) {
   if (f.type === "fork") return forkSel(f.line.id).length > 0;
   if (f.type === "dispo") return !!d.disposition;
   if (f.type === "open") return false;
+  if (f.type === "sum") return sumTotal(f.p, d).allPicked;
   return nonEmpty(d.values[f.id]);
 }
 /** Does a signed-off proposal stand behind this field, waiting for Enter? */
@@ -2770,9 +2856,15 @@ function fieldState(f) {
 
 function choiceSummary(p, labs, d) {
   return oxford(labs.map(function (lab) {
-    if (lab !== OTHER) return String(lab);
-    const t = d.values[p.id + "__other"];
-    return nonEmpty(t) ? String(t) : "other…";
+    if (lab === OTHER) {
+      const t = d.values[p.id + "__other"];
+      return nonEmpty(t) ? String(t) : "other…";
+    }
+    if (p.score) {
+      const o = (p.c || []).find(function (x) { return typeof x === "object" && x.label === lab; });
+      if (o && typeof o.v === "number") return o.v + " " + lab;
+    }
+    return String(lab);
   }));
 }
 function fieldValueText(f) {
@@ -2800,6 +2892,10 @@ function fieldValueText(f) {
     if (def != null) return String(def);
     return (f.p && f.p.hint) || "—";
   }
+  if (f.type === "sum") {
+    const r = sumTotal(f.p, d);
+    return r.allPicked ? String(r.total) + (f.p.suffix || "") : "—";
+  }
   const p = f.p;
   const sel = d.values[p.id];
   const picked = p.multi ? (Array.isArray(sel) ? sel : []) : (nonEmpty(sel) ? [sel] : []);
@@ -2819,6 +2915,22 @@ function fieldNode(f, ctx) {
   n._f = f;
   if (ui.focusKey === n.dataset.key) fieldEditor(n, f, ctx);
   else fieldSummary(n, f, st);
+  return n;
+}
+/** A sum row is read-only and computed: no "ws-field" class (so roving focus,
+ *  fieldNodes(), and onWorksheetKey's `.closest(".ws-field")` all skip it on their
+ *  own — it is simply invisible to that machinery, never focusable, never editable,
+ *  never deletable), no editor, just its label, the computed value in the mono
+ *  font, and a faint "auto" keyhint. */
+function sumFieldNode(f, ctx) {
+  const n = el("span", "ws-sumfield");
+  n.dataset.field = f.id;
+  n.dataset.line = f.line.id;
+  n.dataset.ftype = "sum";
+  const txt = fieldValueText(f);
+  n.appendChild(el("span", "ws-flabel", wrapLabel(fieldLabel(f)) + ":"));
+  n.appendChild(el("span", "ws-fval ws-sumval" + (txt === "—" ? " ws-sumval-empty" : ""), txt));
+  n.appendChild(el("span", "ws-keyhint ws-sumauto", "auto"));
   return n;
 }
 function fieldSummary(n, f, st) {
@@ -3018,14 +3130,21 @@ function textControl(n, box, f) {
 /**
  * The one option-row builder: roving tabindex + aria-checked over radios (single) or
  * checkboxes (multi). The highlight opens on the current pick, else on the proposal.
- * @param {Array<{v:string,t:string,on:boolean,prop:boolean=}>} list
+ * A scored option (`sv` set) renders as "<b>N</b> label" instead of plain text.
+ * @param {Array<{v:string,t:string,on:boolean,prop:boolean=,sv:number=}>} list
  */
 function optionRow(n, box, list, multi, pick) {
   const grp = el("span", "ws-opts");
   grp.setAttribute("role", multi ? "group" : "radiogroup");
   list.forEach(function (o) {
     const b = el("button", (multi ? "chip" : "pill") + (o.on ? " on" : "") +
-      (o.prop && !o.on ? " prop" : ""), o.t);
+      (o.prop && !o.on ? " prop" : "") + (o.sv != null ? " pill-score" : ""));
+    if (o.sv != null) {
+      b.appendChild(el("b", null, String(o.sv)));
+      b.appendChild(document.createTextNode(" " + o.t));
+    } else {
+      b.textContent = o.t;
+    }
     b.type = "button";
     b.tabIndex = -1;
     b.dataset.opt = o.v;
@@ -3065,10 +3184,16 @@ function choiceControl(n, box, f, ctx) {
   // A signed-off default that is not one of the options rides the other… path
   // (card_dys_symptom_status): it shows as its own pill and writes through __other.
   const freeDef = p.other ? defs.filter(function (x) { return labels.indexOf(x) < 0; })[0] : null;
+  const scoreOf = function (lab) {
+    const o = (p.c || []).find(function (x) { return typeof x === "object" && x.label === lab; });
+    return o && typeof o.v === "number" ? o.v : null;
+  };
   const list = [];
   if (freeDef) list.push({ v: freeDef, t: freeDef, on: false, prop: true });
   labels.forEach(function (o) {
-    list.push({ v: o, t: o, on: picked.indexOf(o) >= 0, prop: defs.indexOf(o) >= 0 });
+    const item = { v: o, t: o, on: picked.indexOf(o) >= 0, prop: defs.indexOf(o) >= 0 };
+    if (p.score) item.sv = scoreOf(o);
+    list.push(item);
   });
   if (p.other) list.push({ v: OTHER, t: "other…", on: picked.indexOf(OTHER) >= 0 });
   const writeFree = function () { d.values[p.id] = OTHER; d.values[p.id + "__other"] = freeDef; };
@@ -3083,6 +3208,16 @@ function choiceControl(n, box, f, ctx) {
   };
   optionRow(n, box, list, multi, function (v) { write(v); structuralEdit(); });
   n._other = !!p.other;
+  // Digit shortcut: while a scored field is focused, a number key that matches an
+  // option's `v` picks it directly (onWorksheetKey looks this map up by key text).
+  if (p.score) {
+    n._scoreMap = {};
+    (p.c || []).forEach(function (o) {
+      if (typeof o === "object" && typeof o.v === "number" && n._scoreMap[String(o.v)] === undefined) {
+        n._scoreMap[String(o.v)] = o.label;
+      }
+    });
+  }
   n._accept = function () {
     const v = highlighted(n);
     if (multi) {
@@ -3242,6 +3377,19 @@ function onWorksheetKey(e) {
     const v = highlighted(n);
     if (v != null) n._pick(v);
     return;
+  }
+  // a scored field's own shortcut: a digit matching an option's `v` picks it and
+  // advances, exactly like Enter would — no need to arrow over to it first.
+  if (n._scoreMap && /^[0-9]$/.test(k) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const lab = n._scoreMap[k];
+    if (lab != null) {
+      e.preventDefault();
+      const key = n.dataset.key;
+      setValue(n._f.p.id, lab);
+      structuralEdit();
+      advanceFrom(key);
+      return;
+    }
   }
   // typing on an other:true pill run is a free-text override
   if (n._other && k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
