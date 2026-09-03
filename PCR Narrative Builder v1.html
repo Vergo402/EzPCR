@@ -760,20 +760,37 @@ const COND_IDS = {
 const CHAR_AMBER = 3200, CHAR_RED = 4000;
 
 /* -------------------------------------------------------------------------
-   The narrative is FOUR paragraphs. Sentence order is unchanged — only the
+   A paragraph is named by a TOKEN, not a number. The shell is four fixed
+   paragraphs — "p1".."p4" — and every stacked block or template is a paragraph
+   of its OWN, named by its unit key ("owner:<id>") and printed between p3 and
+   p4 in stack order (see paraOrder). Sentence order is unchanged — only the
    paragraph boundaries live here. Everything the assembler emits lands in a
-   bucket; anything unlisted (every stacked block/template in the slot) falls
-   to 3, and an empty bucket disappears rather than leaving a blank line.
+   bucket; a token no longer in the order (a box that has since been removed)
+   falls back to PARA_FALLBACK, and an empty bucket disappears rather than
+   leaving a blank line.
    ------------------------------------------------------------------------- */
-const PARA = { count: 4, slot: 3 };
-const PARA_SECTIONS = { sh_dispatch: 1, sh_primary: 1, sh_mental: 1, sh_secondary: 3, sh_ongoing: 4 };
+const PARA_SHELL = ["p1", "p2", "p3", "p4"];
+const PARA_FALLBACK = "p3";
+const PARA_SECTIONS = { sh_dispatch: "p1", sh_primary: "p1", sh_mental: "p1",
+                        sh_secondary: "p3", sh_ongoing: "p4" };
 /** sh_assessment is the one section that splits across paragraphs, at line level. */
-const PARA_LINES = { sh_vitals_line: 2, sh_impression_line: 3 };
+const PARA_LINES = { sh_vitals_line: "p2", sh_impression_line: "p3" };
+/**
+ * The paragraph token DOC puts a line in: a named line, else a named shell section,
+ * else the disposition, else — for a line a block or template owns — that box's own
+ * paragraph. The single place block ownership is turned into a token, so the row stamp
+ * at assemble time and homeParaOf() can never drift apart.
+ * @param {string} sectionId @param {?string} lineId @returns {string} a paragraph token
+ */
 function paraOf(sectionId, lineId) {
   if (PARA_LINES[lineId]) return PARA_LINES[lineId];
   if (PARA_SECTIONS[sectionId]) return PARA_SECTIONS[sectionId];
-  if (String(sectionId).indexOf("disp_") === 0) return 4;
-  return PARA.slot;
+  if (String(sectionId).indexOf("disp_") === 0) return "p4";
+  const rec = lineId ? LINE_INDEX[lineId] : null;
+  if (rec && (rec.ownerType === "block" || rec.ownerType === "template")) {
+    return "owner:" + rec.ownerId;
+  }
+  return PARA_FALLBACK;
 }
 
 /* ============================ ORDERING ============================ */
@@ -790,7 +807,7 @@ function paraOf(sectionId, lineId) {
  *                  as DOC grows, and only the absence of a stored order says so.
  *   lineOrder      regionKey -> line keys, frozen one region at a time for the same
  *                  reason — a region nobody dragged inside still follows DOC.
- *   paraOverrides  unitKey -> 1..4, stored only where it differs from the unit's home
+ *   paraOverrides  unitKey -> paragraph token, stored only where it differs from home
  *                  paragraph, so a unit that is merely moved keeps answering to DOC.
  *
  * Three kinds of unit key are addressable:
@@ -826,24 +843,52 @@ function homeRegionOf(lineId) {
 /**
  * The paragraph a unit lands in with nothing overriding it. A line answers from its
  * HOME section, so dragging a sentence somewhere else does not silently re-file it —
- * only an override does that. Every box is the slot paragraph.
+ * only an override does that. A box IS a paragraph, so its home token is its own key,
+ * and a line the box owns answers with that same token.
  * "sec:" keys are an extension used by applyMove()'s neighbour scan: a section cannot
  * be dragged, but it is a legitimate neighbour to inherit a paragraph from.
- * @param {string} unitKey @returns {number} 1..PARA.count
+ * @param {string} unitKey @returns {string} a paragraph token
  */
 function homeParaOf(unitKey) {
   const key = String(unitKey);
   if (key.indexOf("line:") === 0) {
     const id = key.slice(5);
     const rec = LINE_INDEX[id];
-    return rec ? paraOf(rec.sectionId, id) : PARA.slot;
+    return rec ? paraOf(rec.sectionId, id) : PARA_FALLBACK;
   }
-  if (key.indexOf("owner:") === 0) return PARA.slot;
+  if (key.indexOf("owner:") === 0) return key;
   // The disposition region has no single DOC section id — every disposition section is
   // "disp_<id>" — so ask paraOf() with the prefix that decides it.
   if (key === "sec:disposition") return paraOf("disp_", null);
   if (key.indexOf("sec:") === 0) return paraOf(key.slice(4), null);
-  return PARA.slot;
+  return PARA_FALLBACK;
+}
+
+/**
+ * Every paragraph, in PRINT order: the three shell paragraphs that open the narrative,
+ * then one paragraph per stacked box in the order the top-level arrangement holds them,
+ * then the disposition. Dragging a box reorders the boxes among themselves; it cannot
+ * lift one out from between p3 and p4, which is the frame the standard fixes.
+ * @param {Object} ctx @returns {Array<string>} paragraph tokens
+ */
+function paraOrder(ctx) {
+  const owners = [];
+  effectiveTopOrder(ctx).forEach(function (key) {
+    if (String(key).indexOf("owner:") === 0) owners.push(key);
+  });
+  return ["p1", "p2", "p3"].concat(owners, ["p4"]);
+}
+
+/**
+ * Where a token prints. A token that is not in the order at all — a line override still
+ * naming a box the medic has since removed — falls back to the assessment paragraph
+ * rather than vanishing or landing at ¶0. Both the buckets and the badges read through
+ * here, so a stale override reads the same in the narrative and on the worksheet.
+ * @param {string} token @param {Array<string>} order @returns {number} index into order
+ */
+function paraIndexOf(token, order) {
+  const at = order.indexOf(token);
+  return at >= 0 ? at : order.indexOf(PARA_FALLBACK);
 }
 
 /**
@@ -1052,7 +1097,7 @@ function globalUnitIndex(ctx) {
 /**
  * The paragraph a unit is in: its override, else its home. paragraphs() additionally
  * lets a box's override stand in for the lines the box owns; this answers for one unit.
- * @param {string} unitKey @param {Object} d draft @returns {number} 1..PARA.count
+ * @param {string} unitKey @param {Object} d draft @returns {string} a paragraph token
  */
 function resolvedParaOf(unitKey, d) {
   const over = d && d.paraOverrides ? d.paraOverrides[unitKey] : null;
@@ -1087,7 +1132,7 @@ function materializeRegion(d, regionKey, ctx) {
  * committed — it reads the arrangement the move just wrote.
  * A box is followed by its OWN lines, so the downward scan steps over them: the point
  * is which neighbour the box joined, and its own contents are not a neighbour.
- * @param {string} unitKey @param {Object} ctx @returns {number} 1..PARA.count
+ * @param {string} unitKey @param {Object} ctx @returns {string} a paragraph token
  */
 function inheritedPara(unitKey, ctx) {
   const order = Array.from(globalUnitIndex(ctx).keys());
@@ -1105,14 +1150,16 @@ function inheritedPara(unitKey, ctx) {
  * Commit one drag. The caller decides where the unit landed; this records it and
  * nothing else — no redraw, no save — so the caller keeps control of both.
  *
- * @param {{unitKey:string, toRegion:string, toIndex:number, adoptPara:?number}} move
+ * @param {{unitKey:string, toRegion:string, toIndex:number, adoptPara:?string}} move
  *   unitKey    "line:<id>" or "owner:<id>". A box carries its whole region with it, so
  *              it has nowhere to go but among the top-level units.
  *   toRegion   a regionKey, or TOP_REGION ("__top__") for the top level.
  *   toIndex    an index into the destination list AFTER the unit has been taken out of
  *              wherever it was: 0 is first, the list's length is last. Stating it
  *              post-removal is what makes a move within one list unambiguous.
- *   adoptPara  the paragraph the caller wants, or null to inherit from the neighbours.
+ *   adoptPara  the paragraph TOKEN the caller wants, or null to inherit from the
+ *              neighbours. A line dropped into a box therefore adopts the box's own
+ *              token, which is what keeps it in that block's paragraph.
  * @returns {boolean} whether anything moved
  */
 function applyMove(move) {
@@ -2055,11 +2102,13 @@ function joinRows(rows, paint) {
  * A row whose unit has no ordinal at all inherits the nearest preceding row that had
  * one, which holds assembleSlot()'s orphaned fired-escalation rows — their box is no
  * longer stacked, so it is in no order — exactly where they render.
- * @returns {Array<Array<Object>>} PARA.count buckets, in order (empties included)
+ * @returns {Array<Array<Object>>} one bucket per paraOrder() token (empties included)
  */
 function paragraphs(asm) {
   const d = draft();
-  const index = globalUnitIndex(context());
+  const ctx = context();
+  const index = globalUnitIndex(ctx);
+  const order = paraOrder(ctx);
   const overrides = d.paraOverrides || {};
   const rows = [];
   let carried = -1;                        // before any known row: sorts to the front
@@ -2076,12 +2125,8 @@ function paragraphs(asm) {
   // is load-bearing here, not something to inherit from the engine's good behaviour.
   rows.sort(function (a, b) { return (a.sort - b.sort) || (a.seq - b.seq); });
 
-  const buckets = [];
-  for (let i = 0; i < PARA.count; i++) buckets.push([]);
-  rows.forEach(function (r) {
-    const i = r.para - 1;
-    buckets[i >= 0 && i < buckets.length ? i : PARA.slot - 1].push(r.row);
-  });
+  const buckets = order.map(function () { return []; });
+  rows.forEach(function (r) { buckets[paraIndexOf(r.para, order)].push(r.row); });
   return buckets;
 }
 /**
@@ -2090,7 +2135,7 @@ function paragraphs(asm) {
  * sentences with it. Failing that, the paragraph the row was stamped with at render
  * time — the row's own answer, not a re-derived one, so nothing can drift from it.
  * @param {string} unitId @param {Object} row @param {Object} overrides
- * @returns {number} a paragraph number, clamped by the caller
+ * @returns {string} a paragraph token, resolved against paraOrder() by the caller
  */
 function rowPara(unitId, row, overrides) {
   const own = overrides["line:" + unitId];
@@ -2100,7 +2145,7 @@ function rowPara(unitId, row, overrides) {
     const box = overrides["owner:" + rec.ownerId];
     if (box) return box;
   }
-  return row.para || PARA.slot;
+  return row.para || PARA_FALLBACK;
 }
 
 /**
@@ -2258,7 +2303,7 @@ function lineDeferred(line, ctx) {
  * Not resolvedParaOf(): that answers for one unit only and deliberately skips the box
  * fallback (see its own docstring), which a line badge needs and an owner badge is
  * unaffected by (an "owner:" key has no box of its own to inherit from either way).
- * @param {string} unitKey @param {Object} d draft @returns {number} 1..PARA.count
+ * @param {string} unitKey @param {Object} d draft @returns {string} a paragraph token
  */
 function unitBadgePara(unitKey, d) {
   const overrides = (d && d.paraOverrides) || {};
@@ -2380,12 +2425,14 @@ function hiddenChip(sec, match) {
   sec._tools.appendChild(wrap);
 }
 
-/** The "¶N" pill next to a unit: amber once the unit no longer answers to its home
- *  paragraph, so a dragged sentence or box reads as moved at a glance. */
-function makeParaBadge(unitKey, d) {
-  const para = unitBadgePara(unitKey, d);
-  const cls = "ws-para" + (para !== homeParaOf(unitKey) ? " ws-para-moved" : "");
-  return el("span", cls, "¶" + para);
+/** The "¶N" pill next to a unit: N is where the unit's paragraph PRINTS — its position
+ *  in paraOrder(), which shifts as boxes are stacked — and the pill goes amber once the
+ *  unit no longer answers to its home paragraph, so a dragged sentence or box reads as
+ *  moved at a glance. */
+function makeParaBadge(unitKey, ctx) {
+  const token = unitBadgePara(unitKey, ctx.d);
+  const cls = "ws-para" + (token !== homeParaOf(unitKey) ? " ws-para-moved" : "");
+  return el("span", cls, "¶" + (paraIndexOf(token, paraOrder(ctx)) + 1));
 }
 
 /**
@@ -2404,7 +2451,7 @@ function unitWrap(host, unitKey, ctx, extraClass) {
   wrap.appendChild(makeDeleteLine(unitKey.slice(5)));
   const body = el("div", "ws-line-body");
   wrap.appendChild(body);
-  wrap.appendChild(makeParaBadge(unitKey, ctx.d));
+  wrap.appendChild(makeParaBadge(unitKey, ctx));
   host.appendChild(wrap);
   return body;
 }
@@ -2559,7 +2606,7 @@ function ownerBox(host, ownerRec, ctx) {
   hiddenChip(sec, function (rec) {
     return rec.ownerId === owner.id && (rec.ownerType === "block" || rec.ownerType === "template");
   });
-  sec._tools.appendChild(makeParaBadge(unitKey, ctx.d));
+  sec._tools.appendChild(makeParaBadge(unitKey, ctx));
   const x = el("button", "rm-block", "×");
   x.type = "button"; x.title = "remove " + kind;
   x.addEventListener("click", function () { removeBlock(owner.id); });
@@ -3877,6 +3924,14 @@ function restore() {
       }
       delete m.activeTemplate;
       delete m.activeAddendum;
+      // Paragraph identity used to be an int 1..4; it is a token now (see PARA_SHELL).
+      // A block's paragraph did not exist back then, so every stored int is a shell one.
+      Object.keys(m.paraOverrides).forEach(function (k) {
+        const v = m.paraOverrides[k];
+        if (typeof v !== "number") return;
+        const tok = PARA_SHELL[v - 1];
+        if (tok) m.paraOverrides[k] = tok; else delete m.paraOverrides[k];
+      });
       migrateDraft(m);
       return m;
     });

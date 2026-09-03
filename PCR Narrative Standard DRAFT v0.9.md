@@ -10,7 +10,7 @@ Conventions
 - Every block ends with its escalation line. If it fires, stop the block and switch to the dedicated template.
 - Withheld treatments are written next to the drug they belong to, with the reason.
 - GCS appears only in the Neuro/AMS and Trauma blocks.
-- The finished narrative is four paragraphs: (1) initial — dispatch, primary, mental status/CC/history; (2) vitals; (3) assessment — impression, secondary/exam, and all blocks/templates; (4) disposition — ongoing/transport and disposition. This structure and the printed order within each paragraph are defaults: sentences and whole blocks may be rearranged — including into a different paragraph — to match the order things actually happened. The four-paragraph frame itself is fixed.
+- The finished narrative is a fixed shell of four paragraphs with the stacked material printed between the third and the fourth: (1) initial — dispatch, primary, mental status/CC/history; (2) vitals; (3) assessment — impression, secondary/exam; then **each block or template as its own paragraph, in the order they were stacked**; then (4) disposition — ongoing/transport and disposition. Sentences and whole blocks may still be rearranged, including into a different paragraph, to match the order things actually happened; the shell paragraphs and the block-per-paragraph rule are the frame.
 - A sentence that two stacked blocks both carry (analgesia withheld, 12-lead, IV access, GCS after an escalation) is written once. The first block in the chart states it; the builder hides the later block's copy unless the medic shows it. The twin groups are listed in the builder's DOC meta.
 
 ---
@@ -34,7 +34,7 @@ Vitals as noted in emsCharts activity log, [stable / concerning for ___] {restat
 Working impression ___. DDx ___.
 
 **[BLOCK SLOT]**
-{Paste the call-type block here. Treatments, withheld treatments with reason, reassessment, escalation line.}
+{Where the call-type blocks and templates are authored — treatments, withheld treatments with reason, reassessment, escalation line. This marks authoring position, not print position: each stacked block or template prints as its own paragraph AFTER the assessment paragraph (impression, then Secondary below) and before the disposition paragraph, in the order they were stacked.}
 
 **Secondary**
 Secondary assessment [head-to-toe / focused ___] unremarkable except ___.
@@ -563,6 +563,8 @@ Pt txp ALS to NYP-HVHC. Hospital notified via cell at 2233. No pt changes throug
 ---
 
 ## 28. REVISION HISTORY
+
+**v0.9 addendum — 2026-09-02.** Block-per-paragraph. The narrative is no longer four paragraphs with every block crowded into the third: the four shell paragraphs stay fixed, and each stacked block or template now prints as its own paragraph between the assessment paragraph and the disposition paragraph, in the order the blocks were stacked. Conventions (§Conventions) and the §1 [BLOCK SLOT] note restated accordingly — the slot marks where block content is authored, not where it prints, so the assessment paragraph now ends with Secondary and the blocks follow it. Paragraph identity in the builder becomes a token rather than a number (`p1`–`p4` for the shell, the owner id for a box), so a sentence or box moved into a block's paragraph stays with that block; the `¶N` badge shows the printed position. No version bump: nothing clinical changed.
 
 **v0.9 — 2026-09-01.** Sync pass closing the SYNC DEBT between this MD and the builder's DOC (18 defaults-review changes had been applied to the DOC directly, MD trailing until now — 13 of them needed MD-side sync, listed below), plus three demotion rulings from the same review.
 - Meds marked multi-select (`{any that apply}`).
