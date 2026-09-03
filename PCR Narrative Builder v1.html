@@ -105,6 +105,10 @@ button:active { background: var(--tint); }
   max-height: calc(100vh - 84px); display: flex; flex-direction: column;
   background: var(--sheet); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
 }
+#keyhint-bar {
+  font-family: var(--mono); font-size: 10.5px; color: var(--text-faint);
+  background: var(--paper); border-bottom: 1px solid var(--border); padding: 5px 16px;
+}
 #statusbar { font-family: var(--mono); font-size: 11px; color: var(--text-dim); padding: 6px 16px; border-top: 1px solid var(--border); background: var(--paper); position: sticky; bottom: 0; z-index: 30; }
 
 /* ---- worksheet ---- */
@@ -258,6 +262,38 @@ input.time.bad { border-bottom-color: var(--red-text); box-shadow: 0 0 0 1px var
 .ws-drop-slot { border: 1px dashed var(--text-faint); border-radius: var(--radius-sm); background: var(--tint); }
 body.ws-dragging { user-select: none; -webkit-user-select: none; }
 
+/* ---- deletion: sentence/field × controls and the restore chip ---- */
+/* both × controls are hover-revealed like the drag handle: a chart is read far more
+   often than it is pruned, so removal must not be part of the resting picture. */
+.ws-del {
+  flex-shrink: 0; width: 18px; height: 18px; padding: 0; line-height: 1;
+  border: 1px solid transparent; border-radius: 50%; background: transparent;
+  color: var(--text-faint); font-size: 12px; opacity: 0; transition: opacity .12s ease;
+}
+.ws-del:hover { background: var(--red-bg); border-color: var(--red-border); color: var(--red-text); }
+.ws-line > .ws-del-line { margin-top: 9px; }
+.ws-line:hover > .ws-del-line, .ws-del-line:focus-visible { opacity: 1; }
+.ws-row > .ws-del-field { margin-left: auto; }
+.ws-row:hover > .ws-del-field, .ws-del-field:focus-visible { opacity: 1; }
+@media (hover: none) { .ws-del { opacity: 1; } }
+
+.ws-hidden-wrap { position: relative; display: inline-flex; }
+.ws-hidden-chip {
+  height: 20px; padding: 0 8px; font-size: 10.5px; color: var(--text-faint);
+  background: transparent; border: 1px dashed var(--border); border-radius: 999px;
+}
+.ws-hidden-chip:hover { color: var(--ink); border-color: var(--border-strong); }
+.ws-hidden-pop {
+  position: absolute; top: 26px; right: 0; z-index: 50; background: var(--sheet);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(60,50,30,.18); padding: 6px; min-width: 220px;
+  max-height: 50vh; overflow-y: auto;
+}
+
+/* ---- grouped rows: a line's later fields read as continuations of its first ---- */
+.ws-sub-1 { margin-left: 18px; padding-left: 10px; border-left: 2px solid var(--border); border-radius: 0; }
+.ws-sub-2 { margin-left: 36px; padding-left: 10px; border-left: 2px solid var(--border); border-radius: 0; }
+
 /* ---- pills + chips (worksheet controls and the escalation modal) ---- */
 .pill, .chip { height: 25px; padding: 0 11px; font-size: 12px; border-radius: 999px; vertical-align: baseline; }
 .pill.on, .chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 500; }
@@ -346,6 +382,8 @@ body.ws-dragging { user-select: none; -webkit-user-select: none; }
     <button id="new-call" type="button">New call</button>
   </div>
 </header>
+
+<div id="keyhint-bar">↵ accept · type to change · Tab skip · nothing is written until you accept it</div>
 
 <main id="panes">
   <section id="form-pane">
@@ -1128,10 +1166,11 @@ function orderCustomized() {
 }
 
 /* -------------------------------------------------------------------------
-   DEFAULTS — clinical content, signed off. An unset field that has a default
-   is PROPOSED: it emits its default text faintly and counts against the copy
-   gate until the medic attests it. Accepting writes the value into the draft,
-   after which it is indistinguishable from a typed one.
+   DEFAULTS — clinical content, signed off. An unset field that has a default is
+   PROPOSED, but the proposal lives ONLY in the worksheet: the faint placeholder in
+   a blank, the dashed `prop` pill in an option run. It never reaches the narrative
+   on its own. Enter accepts it, which WRITES the value into the draft, after which
+   it is indistinguishable from a typed one — and only then does it emit.
    ------------------------------------------------------------------------- */
 const DEFAULTS = {
 sh_dispatch_loc:"above address",sh_response_mode:"emergency",sh_airway_status:"+",sh_breathing_status:"+",sh_pulse_status:"+",sh_lung_sounds:"clear bilat",sh_pulse_desc:"strong, regular radial",sh_skin:"warm, dry, intact",sh_avpu:"Alert",sh_loc:"-",sh_history_source:"Pt",sh_meds:["per list"],sh_allergies:"NKDA",sh_vitals_status:"stable",
@@ -1242,6 +1281,7 @@ function collectFieldIds(line, bag) {
     (parts || []).forEach(function (p) {
       if (typeof p === "string") return;
       if (p.f) bag.add(p.f);
+      else if (p.aox) bag.add(p.aox);
       else if (p.c) {
         bag.add(p.id); bag.add(p.id + "__other");
         p.c.forEach(function (o) { if (typeof o === "object" && o.parts) walk(o.parts); });
@@ -1299,6 +1339,10 @@ function makeDraft(label, unit) {
     // esc attested-as-not-fired. Field proposals are accepted into `values`.
     attested: {},
     naSections: {}, ptContactMade: false, disposition: null, polish: null,
+    // Deleted material, by unit: "line:<lineId>" and "field:<lineId>|<fieldId>".
+    // A delete is a suppression, never an erasure — the values stay in `values`,
+    // so restoring a hidden unit brings back exactly what was charted.
+    hidden: {},
     // Order the medic arranged, if any (see ORDERING). A null topOrder is pristine:
     // it means "follow DOC", which an empty array could not say.
     topOrder: null, lineOrder: {}, paraOverrides: {}
@@ -1388,6 +1432,53 @@ function forkSel(lineId) {
   return Array.isArray(v) ? v : (nonEmpty(v) ? [v] : []);
 }
 
+/* ---- deletion ---- */
+
+/**
+ * A deleted sentence or field is HIDDEN, not erased: both the assembler and the
+ * worksheet skip it, its values stay in the draft, and the section's restore chip
+ * can bring it back untouched.
+ */
+function hiddenMap(d) { return (d || draft()).hidden || {}; }
+function lineHidden(lineId, d) { return !!hiddenMap(d)["line:" + lineId]; }
+function fieldHidden(lineId, fieldId, d) {
+  return !!hiddenMap(d)["field:" + fieldKey(lineId, fieldId)];
+}
+function setHidden(key, on) {
+  const d = draft();
+  const h = d.hidden || (d.hidden = {});
+  if (on) h[key] = true; else delete h[key];
+}
+
+/* ---- omit by default ---- */
+
+/**
+ * OMIT BY DEFAULT: a skeleton the medic has not answered is not part of the chart.
+ * A line emits only once the medic's own input reaches it — a value in `values`, a
+ * fork arm in `forks`, a settled tri mode, a settled escalation. Until then it emits
+ * nothing AND raises no open item, so a fresh draft's narrative is genuinely empty
+ * rather than a page of proposals waiting to be disowned.
+ *
+ * The one exception is a line with NO fields at all ("Obvious death criteria
+ * reviewed: not met."): there is nothing to accept, so there is no gate to apply and
+ * it emits as it always has. Its worksheet row is read-only (see literalRow), and
+ * deleting the sentence is how it is taken out.
+ * @param {Object} line @param {Object} d draft @returns {boolean}
+ */
+function lineFieldless(line) {
+  if (line.kind === "fork") return false;      // its arms are its answer
+  const bag = new Set();
+  collectFieldIds(line, bag);
+  return bag.size === 0;
+}
+function lineAccepted(line, d) {
+  if (lineFieldless(line)) return true;
+  if (lineTouched(line, d)) return true;
+  if (line.kind === "tri") return triSettled(line.id);
+  if (line.kind === "esc") return escSettled(line.id);
+  return false;
+}
+
 /* ============================ ASSEMBLY (authoritative) ============================ */
 
 /**
@@ -1400,15 +1491,84 @@ function forkSel(lineId) {
  * @returns {string} raw text, blanks wrapped in BL0/BL1 sentinels
  */
 function renderParts(parts, c) {
-  let out = "";
-  (parts || []).forEach(function (p) {
-    if (typeof p === "string") { out += replaceAllStr(p, UNIT_TOKEN, c.ctx.unit); return; }
-    if (p.f) { out += renderFill(p, c); return; }
-    if (p.c) { out += renderChoice(p, c); return; }
-    if (p.aox) { out += renderAox(p, c); return; }
-    if (p.g) { out += partsHaveValue(p.g, c.ctx.d.values) ? renderParts(p.g, c) : ""; return; }
+  const out = [];                    // {t:string, lit:boolean}
+  let pending = false;               // the literal AFTER a deleted field belongs to it
+  const last = lastFieldIndex(parts);
+  (parts || []).forEach(function (p, ix) {
+    if (typeof p === "string") {
+      const lit = replaceAllStr(p, UNIT_TOKEN, c.ctx.unit);
+      // The literal after the LAST field of a run is that field's own tail — a unit
+      // ("{sh_loc_min} min"), a qualifier — not an introduction to anything else, so
+      // it goes with the field. Same for a field that opens its run and so has no
+      // introduction behind it at all.
+      if (pending) {
+        pending = false;
+        if (lit.indexOf(".") < 0 && lit.indexOf("?") < 0) { out.push({ t: "", lit: true }); return; }
+      }
+      out.push({ t: lit, lit: true });
+      return;
+    }
+    if (p.g) { out.push({ t: partsHaveValue(p.g, c.ctx.d.values) ? renderParts(p.g, c) : "", lit: false }); return; }
+    let t;
+    if (p.f) t = renderFill(p, c);
+    else if (p.c) t = renderChoice(p, c);
+    else if (p.aox) t = renderAox(p, c);
+    else return;
+    const fid = partFieldId(p);
+    if (t === "" && fid && fieldHidden(c.line.id, fid, c.ctx.d)) {
+      // The flag rides the LINE's collector, not this call: a field deleted inside a
+      // picked option empties that option, and the gap it leaves ("A+Ox ___, , and
+      // complaining of") is in the run one level up, which must normalise too.
+      c.dropped = true;
+      if (!dropConnector(out) || ix === last) pending = true;
+    } else if (t !== "") pending = false;
+    out.push({ t: t, lit: false });
   });
-  return out;
+  const s = out.map(function (x) { return x.t; }).join("");
+  // Normalisation runs ONLY on a line that actually lost a field: every other line
+  // must come out of here byte-identical to what it produced before deletion existed.
+  return c.dropped ? normaliseGaps(s) : s;
+}
+/** @returns {number} index of the last part in a run that emits a field, or -1 */
+function lastFieldIndex(parts) {
+  let last = -1;
+  (parts || []).forEach(function (p, i) {
+    if (typeof p !== "string" && (p.f || p.c || p.aox || p.g)) last = i;
+  });
+  return last;
+}
+/** The field id a part answers to — the same id `hidden` and the worksheet key on. */
+function partFieldId(p) {
+  if (p.f) return p.f;
+  if (p.c) return p.id;
+  if (p.aox) return p.aox;
+  return null;
+}
+/**
+ * A deleted field takes the literal that introduced it with it ("with ", ", and "),
+ * so the prose closes over the gap instead of stuttering. A literal carrying "." or
+ * "?" ends a sentence rather than joining one, so it is never swallowed.
+ * @returns {boolean} false when nothing precedes the field at all — its introduction
+ *   is then the literal AFTER it, which renderParts drops instead.
+ */
+function dropConnector(out) {
+  for (let i = out.length - 1; i >= 0; i--) {
+    if (out[i].t === "") continue;
+    if (out[i].lit && out[i].t.indexOf(".") < 0 && out[i].t.indexOf("?") < 0) out[i].t = "";
+    return true;
+  }
+  return false;
+}
+/** Tidy the punctuation a deletion left behind. Only ever touches whitespace and
+ *  punctuation, so a blank's BL0/BL1 sentinel pair can never be lost here. */
+function normaliseGaps(s) {
+  return String(s)
+    .replace(/\(\s*\)/g, "")
+    .replace(/,(?:\s*,)+/g, ",")
+    .replace(/\s+,/g, ",")
+    .replace(/,\s*\./g, ".")
+    .replace(/\s+\./g, ".")
+    .replace(/ {2,}/g, " ");
 }
 
 /**
@@ -1421,41 +1581,23 @@ function blankSpan(c, fieldId, hint, label, kind, text) {
   return BL0 + stripSentinels(text) + BL1;
 }
 
-/**
- * What a field would emit if its proposal were accepted. Rendered into a throwaway
- * collector: a default whose option carries embedded blanks (met_reassess_choice,
- * ob_prenatal_care, …) must not double-count those blanks before it is accepted.
- * @returns {string} plain text, no sentinels
- */
-function proposedText(c, render) {
-  const sub = { ctx: c.ctx, line: c.line, sectionId: c.sectionId, sectionName: c.sectionName, missing: [] };
-  return stripSentinels(render(sub));
-}
-
-/** @returns {string} the fill's value, a proposal, a flagged blank, or "" */
+/** @returns {string} the fill's value, a flagged blank, or "" — never a proposal:
+ *  a signed-off default lives in the worksheet, where Enter accepts it, and reaches
+ *  the narrative only once it has been written into the draft. */
 function renderFill(p, c) {
+  if (fieldHidden(c.line.id, p.f, c.ctx.d)) return "";
   const v = c.ctx.d.values[p.f];
   if (nonEmpty(v)) return String(v);
-  const def = defaultFor(p.f, c.ctx.d);
-  if (def != null) return blankSpan(c, p.f, p.hint, null, "proposed", String(def));
   if (p.req) return blankSpan(c, p.f, p.hint, null, "missing", "___");
   return "";
 }
 
-/** @returns {string} Oxford-joined selection text, a proposal, a flagged blank, or "" */
+/** @returns {string} Oxford-joined selection text, a flagged blank, or "" */
 function renderChoice(p, c) {
+  if (fieldHidden(c.line.id, p.id, c.ctx.d)) return "";
   const sel = c.ctx.d.values[p.id];
   const picked = p.multi ? (Array.isArray(sel) ? sel : []) : (nonEmpty(sel) ? [sel] : []);
   if (picked.length === 0) {
-    const def = defaultFor(p.id, c.ctx.d);
-    if (def != null) {
-      const labs = Array.isArray(def) ? def : [def];
-      const text = proposedText(c, function (sub) {
-        return oxford(labs.map(function (lab) { return choiceOptionText(p, lab, sub); })
-          .filter(function (t) { return t !== ""; }));
-      });
-      return blankSpan(c, p.id, p.hint, null, "proposed", text);
-    }
     if (p.req) return blankSpan(c, p.id, p.hint, null, "missing", "___");
     return "";
   }
@@ -1466,6 +1608,7 @@ function renderChoice(p, c) {
 }
 function choiceOptionText(p, lab, c) {
   if (lab === OTHER) {
+    if (fieldHidden(c.line.id, p.id + "__other", c.ctx.d)) return "";
     const t = c.ctx.d.values[p.id + "__other"];
     if (nonEmpty(t)) return String(t);
     if (p.req) return blankSpan(c, p.id + "__other", "other", null, "missing", "___");
@@ -1492,17 +1635,19 @@ function aoxPicked(values, id) {
   const have = Array.isArray(sel) ? sel : [];
   return AOX.filter(function (x) { return have.indexOf(x.k) >= 0; });
 }
-/** Orientation has a STRUCTURAL proposal: all four components. */
+/** Orientation has a STRUCTURAL proposal: all four components — offered in the
+ *  worksheet only (the ×4 pill), never written into the prose unaccepted. */
 const AOX_KEYS = AOX.map(function (x) { return x.k; });
 function aoxText(rows) {
   return rows.length + " (" + rows.map(function (x) { return x.a; }).join(", ") + ")";
 }
-/** @returns {string} "N (X, Y, Z)", or the ×4 proposal */
+/** @returns {string} "N (X, Y, Z)", or an amber blank. The part sits bare in a literal
+ *  run ("Pt A+Ox {aox}, …"), so an unpicked score must hold its place rather than
+ *  leave the sentence malformed. */
 function renderAox(p, c) {
+  if (fieldHidden(c.line.id, p.aox, c.ctx.d)) return "";
   const picked = aoxPicked(c.ctx.d.values, p.aox);
-  if (picked.length === 0) {
-    return blankSpan(c, p.aox, null, "orientation", "proposed", aoxText(AOX));
-  }
+  if (picked.length === 0) return blankSpan(c, p.aox, null, "orientation", "missing", "___");
   return aoxText(picked);
 }
 
@@ -1511,6 +1656,7 @@ function partsHaveValue(parts, values) {
   return (parts || []).some(function (p) {
     if (typeof p === "string") return false;
     if (p.f) return nonEmpty(values[p.f]);
+    if (p.aox) return nonEmpty(values[p.aox]);
     if (p.c) return nonEmpty(values[p.id]) || nonEmpty(values[p.id + "__other"]);
     if (p.g) return partsHaveValue(p.g, values);
     return false;
@@ -1519,7 +1665,8 @@ function partsHaveValue(parts, values) {
 
 /** @param {string} [label] overrides the derived tail — for computed parts whose
  *  field id does not read as English (see renderAox).
- *  @param {string} [kind] "missing" (no default) or "proposed" (default unattested) */
+ *  @param {string} [kind] always "missing" from a blank; "proposed" survives only as a
+ *  LINE-level item (an unsettled tri or esc decision — see noteLineLevel) */
 function noteMissing(c, fieldId, hint, label, kind) {
   const lineLabel = c.line.label || c.line.id;
   const fieldLabel = label || fieldTail(fieldId, c.line.id, hint);
@@ -1557,20 +1704,20 @@ function fieldTail(fieldId, lineId, hint) {
  * @returns {Array<{lineId:string, raw:string, withheld:boolean}>}
  */
 function renderLine(line, ctx, sectionId, sectionName, missing) {
-  const c = { ctx: ctx, line: line, sectionId: sectionId, sectionName: sectionName, missing: [] };
+  const c = { ctx: ctx, line: line, sectionId: sectionId, sectionName: sectionName,
+              missing: [], dropped: false };
   const commit = function (rows) {
     if (rows.length) missing.push.apply(missing, c.missing);
     return rows;
   };
   if (!lineEligible(line, ctx)) return [];
+  if (lineHidden(line.id, ctx.d)) return [];
 
   if (line.kind === "fork") {
     const chosen = forkSel(line.id);
-    if (!chosen.length) {
-      // An unpicked pathway is an unanswered question, not a silent omission.
-      noteLineLevel(missing, line, sectionId, sectionName, "__fork__" + line.id, "pathway", "missing");
-      return [];
-    }
+    // An unpicked pathway is not yet part of the chart: it emits nothing and asks
+    // nothing (omit by default). Its worksheet row still prompts "pick one".
+    if (!chosen.length) return [];
     let rows = [];
     chosen.forEach(function (lab) {
       const o = (line.options || []).find(function (x) { return x.label === lab; });
@@ -1581,6 +1728,10 @@ function renderLine(line, ctx, sectionId, sectionName, missing) {
     });
     return rows;
   }
+
+  // Nothing is written until the medic accepts it: an untouched skeleton emits no
+  // text and raises no open item, so it cannot reach the clipboard unnoticed.
+  if (!lineAccepted(line, ctx.d)) return [];
 
   let raw = "", withheld = false, proposed = false;
   if (line.kind === "std") raw = renderParts(line.parts, c);
@@ -1998,6 +2149,101 @@ function makeHandle(label) {
   return b;
 }
 
+/* ---- delete affordances ---- */
+
+/** Field types a × can remove. A structural decision (tri mode, escalation, fork arm,
+ *  disposition) is NOT one of them: hiding it would strand its line with no way to
+ *  change the mode that still drives it. Deleting the whole sentence is that affordance. */
+const DELETABLE_FIELD = { text: 1, pills: 1, chips: 1, aox: 1 };
+
+/** The sentence's own ×, in the handle gutter: hides the line on both sides. */
+function makeDeleteLine(lineId) {
+  const b = el("button", "ws-del ws-del-line", "×");
+  b.type = "button";
+  b.title = "delete sentence";
+  b.setAttribute("aria-label", "delete sentence");
+  b.addEventListener("click", function (e) { e.stopPropagation(); deleteLine(lineId); });
+  return b;
+}
+/** The field's ×, at the right edge of its row. */
+function makeDeleteField(f) {
+  const b = el("button", "ws-del ws-del-field", "×");
+  b.type = "button";
+  b.title = "delete field";
+  b.setAttribute("aria-label", "delete field");
+  b.addEventListener("click", function (e) { e.stopPropagation(); deleteField(f.line.id, f.id); });
+  return b;
+}
+/** Deleting charted material asks first — the same confirmation removeBlock uses. */
+function deleteLine(lineId) {
+  const rec = LINE_INDEX[lineId];
+  const drop = function () { setHidden("line:" + lineId, true); structuralEdit(); };
+  if (!rec || !lineTouched(rec.line, draft())) { drop(); return; }
+  openModal({
+    title: "Delete sentence?",
+    body: "This sentence has entered values. Deleting it drops them from the narrative.",
+    actions: [{ label: "Cancel", cls: "quiet" }, { label: "Delete", cls: "danger", onClick: drop }]
+  });
+}
+function deleteField(lineId, fieldId) {
+  setHidden("field:" + fieldKey(lineId, fieldId), true);
+  structuralEdit();
+}
+
+/** Every hidden unit under one section, as restore rows. `match` is asked about each
+ *  hidden unit's LINE_INDEX record, so a section only ever offers back its own. */
+function hiddenEntries(match) {
+  const d = draft();
+  const out = [];
+  Object.keys(d.hidden || {}).forEach(function (key) {
+    const isLine = key.indexOf("line:") === 0;
+    const body = key.slice(key.indexOf(":") + 1);
+    const cut = body.indexOf("|");
+    const lineId = isLine ? body : body.slice(0, cut);
+    const rec = LINE_INDEX[lineId];
+    if (!rec || !match(rec)) return;
+    const lineLabel = (rec.line && rec.line.label) || lineId;
+    out.push({ key: key, label: isLine ? lineLabel
+      : lineLabel + " — " + fieldTail(body.slice(cut + 1), lineId, null) });
+  });
+  return out;
+}
+function closeHiddenPops() {
+  Array.prototype.forEach.call(document.querySelectorAll("#worksheet .ws-hidden-pop"),
+    function (p) { p.hidden = true; });
+}
+/** "+ N hidden" in a section's tools, opening the list of what it can take back. */
+function hiddenChip(sec, match) {
+  const entries = hiddenEntries(match);
+  if (!entries.length) return;
+  const wrap = el("span", "ws-hidden-wrap");
+  const chip = el("button", "ws-hidden-chip", "+ " + entries.length + " hidden");
+  chip.type = "button";
+  chip.title = "restore deleted material";
+  const pop = el("div", "ws-hidden-pop");
+  pop.hidden = true;
+  pop.appendChild(el("div", "popup-head", "Restore"));
+  entries.forEach(function (en) {
+    const row = el("button", "popup-row", en.label);
+    row.type = "button";
+    row.addEventListener("click", function (e) {
+      e.stopPropagation();
+      setHidden(en.key, false);
+      structuralEdit();
+    });
+    pop.appendChild(row);
+  });
+  chip.addEventListener("click", function (e) {
+    e.stopPropagation();
+    const willOpen = pop.hidden;
+    closeHiddenPops();
+    pop.hidden = !willOpen;
+  });
+  wrap.appendChild(chip);
+  wrap.appendChild(pop);
+  sec._tools.appendChild(wrap);
+}
+
 /** The "¶N" pill next to a unit: amber once the unit no longer answers to its home
  *  paragraph, so a dragged sentence or box reads as moved at a glance. */
 function makeParaBadge(unitKey, d) {
@@ -2019,6 +2265,7 @@ function unitWrap(host, unitKey, ctx, extraClass) {
   const wrap = el("div", "ws-line" + (extraClass ? " " + extraClass : ""));
   wrap.dataset.unit = unitKey;
   wrap.appendChild(makeHandle("Reorder sentence"));
+  wrap.appendChild(makeDeleteLine(unitKey.slice(5)));
   const body = el("div", "ws-line-body");
   wrap.appendChild(body);
   wrap.appendChild(makeParaBadge(unitKey, ctx.d));
@@ -2054,7 +2301,7 @@ function renderWorksheet() {
       if (o) ownerBox(ws, o, ctx);
     } else if (key.indexOf("line:") === 0) {
       const rec = LINE_INDEX[key.slice(5)];
-      if (rec) lineRow(unitWrap(ws, key, ctx, "ws-loose"), rec.line, ctx);
+      if (rec && !lineHidden(rec.line.id, ctx.d)) lineRow(unitWrap(ws, key, ctx, "ws-loose"), rec.line, ctx);
     }
   });
   ui.condSig = condSignature(ctx);
@@ -2079,6 +2326,7 @@ function sectionNode(host, id, name) {
 function shellSection(host, s, ctx) {
   const d = ctx.d;
   const sec = sectionNode(host, s.id, s.name);
+  hiddenChip(sec, function (rec) { return rec.ownerType === "shell" && rec.sectionId === s.id; });
   if (hasBehavior(s, "cancelled-collapse") && ctx.collapse) {
     const lbl = el("label", "pt-contact");
     const cb = document.createElement("input");
@@ -2101,7 +2349,7 @@ function shellSection(host, s, ctx) {
   if (s.note) sec._rows.appendChild(el("div", "ws-note", s.note));
   regionUnits("sec:" + s.id, ctx).forEach(function (key) {
     const rec = LINE_INDEX[key.slice(5)];
-    if (rec) lineRow(unitWrap(sec._rows, key, ctx), rec.line, ctx);
+    if (rec && !lineHidden(rec.line.id, ctx.d)) lineRow(unitWrap(sec._rows, key, ctx), rec.line, ctx);
   });
 }
 
@@ -2128,6 +2376,9 @@ function ownerBox(host, ownerRec, ctx) {
   sec.dataset.unit = unitKey;
   const head = sec.querySelector(".ws-sechead");
   head.insertBefore(makeHandle("Reorder block"), head.firstChild);
+  hiddenChip(sec, function (rec) {
+    return rec.ownerId === owner.id && (rec.ownerType === "block" || rec.ownerType === "template");
+  });
   sec._tools.appendChild(makeParaBadge(unitKey, ctx.d));
   const x = el("button", "rm-block", "×");
   x.type = "button"; x.title = "remove " + kind;
@@ -2154,6 +2405,7 @@ function ownerBox(host, ownerRec, ctx) {
     const id = key.slice(5);
     const rec = LINE_INDEX[id];
     if (!rec) return;
+    if (lineHidden(id, ctx.d)) return;
     const sb = sbOf[id] || null;
     if (sb !== prevSb) {
       if (sb) sec._rows.appendChild(el("div", "ws-subhead", sb.name));
@@ -2166,10 +2418,11 @@ function ownerBox(host, ownerRec, ctx) {
 
 function dispositionSection(host, ctx) {
   const sec = sectionNode(host, "disposition", "Disposition");
+  hiddenChip(sec, function (rec) { return rec.ownerType === "disposition"; });
   lineRow(sec._rows, DISPO_LINE, ctx);
   regionUnits("sec:disposition", ctx).forEach(function (key) {
     const rec = LINE_INDEX[key.slice(5)];
-    if (rec) lineRow(unitWrap(sec._rows, key, ctx), rec.line, ctx);
+    if (rec && !lineHidden(rec.line.id, ctx.d)) lineRow(unitWrap(sec._rows, key, ctx), rec.line, ctx);
   });
 }
 
@@ -2206,10 +2459,11 @@ function lineRow(host, line, ctx) {
   }
   const fields = lineFields(line, ctx);
   if (!fields.length) literalRow(host, line, ctx);
-  fields.forEach(function (f, i) {
-    const row = el("div", "ws-row ws-k-" + line.kind);
+  fields.filter(function (f) { return !rowHidden(line, f, ctx.d); }).forEach(function (f, i) {
+    const row = el("div", "ws-row ws-k-" + line.kind + (f.depth ? " ws-sub-" + f.depth : ""));
     row.dataset.line = line.id;
     row.appendChild(fieldNode(f, ctx));
+    if (DELETABLE_FIELD[f.type]) row.appendChild(makeDeleteField(f));
     // the line's note belongs to the line, so it rides its first field only
     if (i === 0 && line.note) row.appendChild(el("span", "ws-rownote", line.note));
     host.appendChild(row);
@@ -2219,7 +2473,7 @@ function lineRow(host, line, ctx) {
     forkSel(line.id).forEach(function (lab) {
       const o = (line.options || []).find(function (x) { return x.label === lab; });
       if (!o) return;
-      (o.lines || []).forEach(function (s) { lineRow(sub, s, ctx); });
+      (o.lines || []).forEach(function (s) { if (!lineHidden(s.id, ctx.d)) lineRow(sub, s, ctx); });
     });
     if (sub.children.length) host.appendChild(sub);
   }
@@ -2228,47 +2482,69 @@ function lineRow(host, line, ctx) {
 /**
  * The focusable fields of one line, in reading order. A structural decision — tri
  * mode, escalation, fork branch, disposition — is a field like any other.
- * @returns {Array<{line:Object, id:string, type:string, p:Object=}>}
+ *
+ * Every entry carries a `depth`, which is what the worksheet indents on: the line's
+ * FIRST field carries the sentence (depth 0), everything else in the line reads as a
+ * continuation of it (depth 1), and a blank that only exists because an option was
+ * picked hangs off that option (depth 2).
+ * @returns {Array<{line:Object, id:string, type:string, depth:number, p:Object=}>}
  */
 function lineFields(line, ctx) {
   const out = [];
   if (line.kind === "tri") {
-    out.push({ line: line, id: "__tri__" + line.id, type: "tri" });
+    out.push({ line: line, id: "__tri__" + line.id, type: "tri", depth: 0 });
     const m = triMode(line.id);
-    if (m !== "omit") partFields(m === "given" ? line.given : line.withheld, line, ctx, out);
+    if (m !== "omit") partFields(m === "given" ? line.given : line.withheld, line, ctx, out, 0);
   } else if (line.kind === "esc") {
-    out.push({ line: line, id: "__esc__" + line.id, type: "esc" });
-    partFields(ctx.d.esc[line.id] === "fired" ? line.fired : line.normal, line, ctx, out);
+    out.push({ line: line, id: "__esc__" + line.id, type: "esc", depth: 0 });
+    partFields(ctx.d.esc[line.id] === "fired" ? line.fired : line.normal, line, ctx, out, 0);
   } else if (line.kind === "fork") {
-    out.push({ line: line, id: "__fork__" + line.id, type: "fork" });
+    out.push({ line: line, id: "__fork__" + line.id, type: "fork", depth: 0 });
   } else if (line.kind === "dispo") {
-    out.push({ line: line, id: "__dispo__", type: "dispo" });
+    out.push({ line: line, id: "__dispo__", type: "dispo", depth: 0 });
   } else {
-    partFields(line.parts, line, ctx, out);
+    partFields(line.parts, line, ctx, out, 0);
   }
   return out;
 }
-function partFields(parts, line, ctx, out) {
+/** @param {number} [depth] the floor for these parts: 0 at line level, 2 inside a
+ *  picked option's own parts. The first field of the whole line always lands at 0. */
+function partFields(parts, line, ctx, out, depth) {
+  const base = depth || 0;
+  const push = function (f) {
+    f.depth = out.length ? Math.max(base, 1) : base;
+    out.push(f);
+  };
   (parts || []).forEach(function (p) {
     if (typeof p === "string") return;
-    if (p.f) { out.push({ line: line, id: p.f, type: "text", p: p }); return; }
+    if (p.f) { push({ line: line, id: p.f, type: "text", p: p }); return; }
     if (p.c) {
-      out.push({ line: line, id: p.id, type: p.multi ? "chips" : "pills", p: p });
+      push({ line: line, id: p.id, type: p.multi ? "chips" : "pills", p: p });
       const sel = ctx.d.values[p.id];
       const picked = p.multi ? (Array.isArray(sel) ? sel : []) : (nonEmpty(sel) ? [sel] : []);
       if (picked.indexOf(OTHER) >= 0) {
-        out.push({ line: line, id: p.id + "__other", type: "text",
-                   p: { f: p.id + "__other", hint: "other…", w: 16 } });
+        push({ line: line, id: p.id + "__other", type: "text",
+               p: { f: p.id + "__other", hint: "other…", w: 16 } });
       }
       (p.c || []).forEach(function (o) {          // an option's own blanks, once picked
         if (typeof o === "string" || !o.parts || picked.indexOf(o.label) < 0) return;
-        partFields(o.parts, line, ctx, out);
+        partFields(o.parts, line, ctx, out, 2);
       });
       return;
     }
-    if (p.aox) { out.push({ line: line, id: p.aox, type: "aox", p: p }); return; }
-    if (p.g) { partFields(p.g, line, ctx, out); return; }
+    if (p.aox) { push({ line: line, id: p.aox, type: "aox", p: p }); return; }
+    if (p.g) { partFields(p.g, line, ctx, out, base); return; }
   });
+}
+
+/** A row disappears when its own field is deleted — and an "other…" blank goes with
+ *  the choice it belongs to, which is the only thing that puts it on the sheet. */
+function rowHidden(line, f, d) {
+  if (fieldHidden(line.id, f.id, d)) return true;
+  const id = String(f.id);
+  const cut = id.length - 7;                       // "__other".length
+  if (cut > 0 && id.slice(cut) === "__other") return fieldHidden(line.id, id.slice(0, cut), d);
+  return false;
 }
 
 function fieldLabel(f) {
@@ -2290,12 +2566,26 @@ function fieldSet(f) {
   if (f.type === "open") return false;
   return nonEmpty(d.values[f.id]);
 }
-/** CONFIRMED / PROPOSED / AMBER, read straight off the assembler's open items. */
+/** Does a signed-off proposal stand behind this field, waiting for Enter? */
+function fieldProposed(f) {
+  if (f.type === "aox" || f.type === "tri" || f.type === "esc") return true;
+  if (f.type === "text" || f.type === "pills" || f.type === "chips") {
+    return defaultFor(f.id, draft()) != null;
+  }
+  return false;
+}
+/**
+ * CONFIRMED / PROPOSED / AMBER. Open items still decide amber, but a proposal is no
+ * longer an open item — nothing unaccepted reaches the narrative, so there is nothing
+ * to answer for. An untouched field with a default therefore paints FAINT (its
+ * proposal is on offer) and one without paints neutral, neither of them gating Copy.
+ */
 function fieldState(f) {
   if (f.type === "open") return "open";
   const e = fieldEntry(f);
   if (e) return e.kind === "proposed" ? "proposed" : "amber";
-  return fieldSet(f) ? "set" : "idle";
+  if (fieldSet(f)) return "set";
+  return fieldProposed(f) ? "proposed" : "idle";
 }
 
 function choiceSummary(p, labs, d) {
@@ -2750,6 +3040,13 @@ function onWorksheetKey(e) {
   const n = e.target.closest ? e.target.closest(".ws-field") : null;
   if (!n) return;
   const k = e.key;
+  // Shift+Delete removes the field under the cursor — shifted, so a plain Delete
+  // inside a text blank still edits the text it is standing in.
+  if ((k === "Delete" || k === "Backspace") && e.shiftKey && n._f && DELETABLE_FIELD[n._f.type]) {
+    e.preventDefault();
+    deleteField(n._f.line.id, n._f.id);
+    return;
+  }
   if (k === "Enter") { e.preventDefault(); acceptField(n); return; }
   if (k === "Tab") { if (moveFocus(n, e.shiftKey ? -1 : 1)) e.preventDefault(); return; }
   if (k === "ArrowDown") { e.preventDefault(); moveFocus(n, 1); return; }
@@ -3004,8 +3301,26 @@ function pickCategory(name) {
   // index 0 is the primary owner; manually stacked extras are preserved after it
   const extras = d.blockIds.slice(1).filter(function (id) { return id !== hit.id; });
   d.blockIds = [hit.id].concat(extras);
+  pruneOrphanEsc(d);
   seedSubs(hit.id);
   structuralEdit();
+}
+
+/**
+ * Drop escalation marks whose owning box has left the stack. A fired esc line is
+ * carried into the slot by assembleSlot even when its owner is gone (so a swap cannot
+ * silently unfire it mid-call), which is right while the box is being replaced — but
+ * once the medic has actually removed the box, that carry re-emits a sentence with no
+ * box behind it. Removing the box removes its escalation with it.
+ * Shell- and disposition-owned esc lines have no box to lose, so they are left alone.
+ */
+function pruneOrphanEsc(d) {
+  Object.keys(d.esc || {}).forEach(function (lineId) {
+    const rec = LINE_INDEX[lineId];
+    if (!rec) { delete d.esc[lineId]; return; }
+    if (rec.ownerType !== "block" && rec.ownerType !== "template") return;
+    if (d.blockIds.indexOf(rec.ownerId) < 0) delete d.esc[lineId];
+  });
 }
 function seedSubs(blockId) {
   const b = (DOC.blocks || {})[blockId];
@@ -3039,6 +3354,7 @@ function removeBlock(id) {
     const d = draft();
     d.blockIds = d.blockIds.filter(function (x) { return x !== id; });
     delete d.subs[id];
+    pruneOrphanEsc(d);
     // The box stops being an orderable unit, so its top-level place, its own line order
     // and its paragraph go with it. Lines of this box that the medic had dragged into
     // OTHER regions are left stored exactly where they are: the assembler simply stops
@@ -3355,6 +3671,7 @@ function restore() {
       const m = Object.assign(base, d, {
         values: d.values || {}, forks: d.forks || {}, esc: d.esc || {},
         attested: d.attested || {},          // drafts saved before attestations existed
+        hidden: d.hidden || {},              // drafts saved before deletion existed
         naSections: d.naSections || {}, subs: d.subs || {}, blockIds: d.blockIds || [],
         // Drafts saved before ordering existed are pristine by definition: no stored
         // order at all, which is exactly what null / empty say (see ORDERING).
@@ -3835,6 +4152,15 @@ function onHandleKey(e) {
   if (!unitEl) return;
   const grabbed = handle.getAttribute("aria-pressed") === "true";
 
+  // The handle owns the whole sentence, so Delete/Backspace on it deletes that
+  // sentence — grabbed or not (a grabbed unit is released first).
+  if (e.key === "Delete" || e.key === "Backspace") {
+    e.preventDefault(); e.stopPropagation();
+    if (grabbed) setGrabbed(handle, unitEl, false);
+    const key = unitEl.dataset.unit || "";
+    if (key.indexOf("line:") === 0) deleteLine(key.slice(5));
+    return;
+  }
   if (e.key === "Enter" || e.key === " ") {
     e.preventDefault(); e.stopPropagation();
     // key-repeat on a held Enter/Space would otherwise toggle grabbed on/off at OS
@@ -3922,6 +4248,7 @@ function wire() {
   document.addEventListener("click", function (e) {
     const pop = document.getElementById("add-block-popup");
     if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true;
+    if (!(e.target.closest && e.target.closest(".ws-hidden-wrap"))) closeHiddenPops();
   });
   document.getElementById("new-call").addEventListener("click", newCall);
   document.getElementById("reset-order").addEventListener("click", function () {
