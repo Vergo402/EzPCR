@@ -2003,7 +2003,8 @@ function noteDuplicates(asm) {
   paragraphs(asm).forEach(function (rows) {
     rows.forEach(function (l) {
       const k = dupKey(l.raw);
-      if (k === "") return;
+      // A sentence still holding blanks is unfinished, not a repeat of another one.
+      if (k === "" || k.indexOf("___") >= 0) return;
       if (!seen[k]) { seen[k] = true; return; }
       if (noted[l.lineId]) return;
       noted[l.lineId] = true;
