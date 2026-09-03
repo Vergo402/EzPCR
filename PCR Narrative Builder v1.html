@@ -1196,6 +1196,12 @@ function applyMove(move) {
   if (at > list.length) at = list.length;
   list.splice(at, 0, key);
 
+  // A box IS a paragraph, so it has none to adopt: dragging one reorders the boxes
+  // among themselves and nothing else. Without this it would inherit its NEIGHBOUR's
+  // token, which — via rowPara's box branch — would empty its own paragraph into the
+  // neighbour's and dissolve the box-per-paragraph rule on the first drag.
+  if (isOwner) { delete d.paraOverrides[key]; return true; }
+
   const adopted = move.adoptPara != null ? move.adoptPara : inheritedPara(key, ctx);
   // Only a difference from DOC is worth storing; matching it again forgets the override.
   if (adopted === homeParaOf(key)) delete d.paraOverrides[key];
@@ -1997,10 +2003,19 @@ function assemble(ctx) {
 }
 
 /**
- * Which twin sentences lose. Rows are put in PRINT order — the same ordinal-then-
- * assembly-order sort paragraphs() makes, so a dragged block counts as earlier when it
- * reads earlier — and the first EMITTING line of each group keeps the group. A line
- * that emitted nothing produced no row and so never claims anything.
+ * Which twin sentences lose. Rows are put in ORDINAL order — the same ordinal-then-
+ * assembly-order sort paragraphs() makes WITHIN a bucket, so a dragged block counts as
+ * earlier when it reads earlier — and the first EMITTING line of each group keeps the
+ * group. A line that emitted nothing produced no row and so never claims anything.
+ *
+ * Ordinal order is print order inside one paragraph, not across them: paragraphs are
+ * dealt by token (see paraOrder), and a bucket can print ahead of a unit with a smaller
+ * ordinal. It cannot bite today — every twin group's members are block- or
+ * template-owned, so a group only ever spans box paragraphs, which print in ordinal
+ * order anyway — and a medic who overrides one twin's line into an earlier paragraph
+ * gets the ordinal winner rather than the printed-first one. Deliberate: the winner
+ * should be the sentence whose PLACE in the chart the medic arranged, and the loser
+ * cites its winner by box name, which stays true either way.
  *
  * Fork arms take part on their own: a sub-line's row carries its own lineId, and its
  * ordinal comes from the fork it rides in (FORK_PARENT), which is the unit that moves.

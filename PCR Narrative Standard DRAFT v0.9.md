@@ -539,6 +539,9 @@ Pt PMHx HTN, HLD, DM2, ex-smoker quit 2015, no prior cardiac hx. Meds per list, 
 Vitals as noted in emsCharts activity log, concerning for initial BP 152/90, HR 88, RR 20, SpO2 96% on 2 LPM, BGL 164.
 
 Working impression ACS. DDx unstable angina vs NSTEMI vs aortic dissection vs PE.
+Secondary assessment head-to-toe unremarkable except mild diaphoresis, resolved by 2230. Abd soft, NT. No pedal edema. Neuro grossly intact.
+
+{The Cardiac block — the only one stacked on this call — is its own paragraph:}
 Pt describes substernal pressure, non-reproducible, non-pleuritic, no tearing quality, equal radial pulses bilat, no calf tenderness, no recent immobility. Associated diaphoresis, N/V, and lightheadedness. Cardiac risk factors HTN, HLD, DM, former smoker, FHx father MI at 62.
 12-lead acquired at 2214: NSR 88, normal axis, intervals WNL, nonspecific T-wave flattening in V5-V6, no ST elevation or depression, no reciprocal changes.
 ASA 324 mg PO administered at 2216.
@@ -547,7 +550,6 @@ IV 18g L AC at 2220, saline lock. Fluids none.
 Fentanyl withheld: pain improved to 3/10 with NTG, pt declined further analgesia.
 Serial 12-lead at 2228: unchanged.
 STEMI criteria not met on serial 12-leads.
-Secondary assessment head-to-toe unremarkable except mild diaphoresis, resolved by 2230. Abd soft, NT. No pedal edema. Neuro grossly intact.
 
 Pt reassessed en route at 2236: pain 2/10, skin warm and dry, SpO2 97% on 2 LPM. Remaining vitals per activity log.
 Pt txp ALS to NYP-HVHC. Hospital notified via cell at 2233. No pt changes throughout txp. Pt transferred to ED staff, report given to RN Martinez. 35M3 returned to service without further incident.
@@ -564,7 +566,7 @@ Pt txp ALS to NYP-HVHC. Hospital notified via cell at 2233. No pt changes throug
 
 ## 28. REVISION HISTORY
 
-**v0.9 addendum — 2026-09-02.** Block-per-paragraph. The narrative is no longer four paragraphs with every block crowded into the third: the four shell paragraphs stay fixed, and each stacked block or template now prints as its own paragraph between the assessment paragraph and the disposition paragraph, in the order the blocks were stacked. Conventions (§Conventions) and the §1 [BLOCK SLOT] note restated accordingly — the slot marks where block content is authored, not where it prints, so the assessment paragraph now ends with Secondary and the blocks follow it. Paragraph identity in the builder becomes a token rather than a number (`p1`–`p4` for the shell, the owner id for a box), so a sentence or box moved into a block's paragraph stays with that block; the `¶N` badge shows the printed position. No version bump: nothing clinical changed.
+**v0.9 addendum — 2026-09-02.** Block-per-paragraph. The narrative is no longer four paragraphs with every block crowded into the third: the four shell paragraphs stay fixed, and each stacked block or template now prints as its own paragraph between the assessment paragraph and the disposition paragraph, in the order the blocks were stacked. Conventions (§Conventions) and the §1 [BLOCK SLOT] note restated accordingly — the slot marks where block content is authored, not where it prints, so the assessment paragraph now ends with Secondary and the blocks follow it. Worked sample (§26) respaced: the assessment paragraph now ends with Secondary, and the Cardiac block follows it as a paragraph of its own. Paragraph identity in the builder becomes a token rather than a number (`p1`–`p4` for the shell, the owner id for a box), so a sentence or box moved into a block's paragraph stays with that block; the `¶N` badge shows the printed position, and a box — being a paragraph itself — never adopts one when dragged. No version bump: nothing clinical changed.
 
 **v0.9 — 2026-09-01.** Sync pass closing the SYNC DEBT between this MD and the builder's DOC (18 defaults-review changes had been applied to the DOC directly, MD trailing until now — 13 of them needed MD-side sync, listed below), plus three demotion rulings from the same review.
 - Meds marked multi-select (`{any that apply}`).
