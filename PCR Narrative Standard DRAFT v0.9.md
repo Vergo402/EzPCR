@@ -282,7 +282,7 @@ Pt reports ___ {in their words: weak, tired, "not right," can't get up}, onset _
 Screens at ___: BGL ___. Temp ___. Sepsis screen [negative / positive, see Metabolic block]. 12-lead [___ / not indicated: ___]. NYS-LAMS [0, no focal deficit / see Neuro block]. Orthostatics [___ / not obtained: ___]. Hydration: mucous membranes ___, skin turgor ___, urine output per pt ___.
 {Fever/High Temp:} Temp ___, duration ___, [localizing sx ___ / none], sick contacts ___, antipyretics taken ___ at ___. Sepsis screen as above.
 {Asymptomatic HTN:} BP ___ x___ readings, pt denies headache, vision change, CP, SOB, neuro sx. Neuro exam grossly intact. Med compliance ___. No treatment indicated; pt advised private medical doctor follow-up within ___.
-{Abnormal labs:} Sent by ___ {Private medical doctor, dialysis, facility} for ___ {lab, value, drawn ___}. Pt [symptomatic ___ / asymptomatic]. 12-lead at ___: ___ {mandatory for K, Ca, Mg, dig}. Treatment ___ / none indicated in the field.
+{Abnormal labs:} Sent by ___ {private medical doctor, dialysis, facility} for ___ {lab, value, drawn ___}. Pt [symptomatic ___ / asymptomatic]. 12-lead at ___: ___ {mandatory for K, Ca, Mg, dig}. Treatment ___ / none indicated in the field.
 {Unable to ambulate:} [Weakness / pain ___ / mechanical: ___]. Injuries [none / see Trauma block]. Lift assist only [Y, pt assessed and at baseline / N]. Skin check [intact / ___] if down time >1h. Creatine kinase-relevant down time ___.
 IV ___g ___ at ___ / not indicated. Fluids ___ mL NS at ___ for ___ / none.
 Working impression ___ {"generalized weakness, etiology unclear, dehydration vs UTI vs ___"}.
@@ -296,7 +296,7 @@ Categories: Abdominal Pain, GI Bleed, Nausea/Vomiting, Pain (Non-cardiac)
 Escalates to: Metabolic/Sepsis block if septic; Cardiac 2a if epigastric pain is cardiac-suspicious (>35 yo, risk factors, diaphoresis); OB block if pregnant; Trauma if traumatic.
 
 Pain: ___ {OPQRST, location by quadrant, radiation to back/groin/shoulder, quality}. Associated [N/V ___ episodes / diarrhea / constipation, last BM ___ / fever / urinary sx / melena / hematemesis ___ {coffee-ground, bright red, volume} / hematochezia / none] {any that apply}. Last oral intake ___. {Female of childbearing age: last menstrual period ___, pregnancy [possible / denied].}
-Abd exam: [soft / rigid / guarded], [Non-tender / tender ___ quadrant], [distended / non-distended], [rebound tenderness / none], [pulsatile mass / none]. {>50 with back/abd pain: bilateral femoral pulses ___, "AAA not excluded" in DDx if any asymmetry or hypotension.}
+Abd exam: [soft / rigid / guarded], [non-tender / tender ___ quadrant], [distended / non-distended], [rebound tenderness / none], [pulsatile mass / none]. {>50 with back/abd pain: bilateral femoral pulses ___, "AAA not excluded" in DDx if any asymmetry or hypotension.}
 {GI bleed:} Skin ___, orthostatics ___, anticoagulated [Y ___ / N], prior GI bleed [Y / N], ETOH Hx [Y / N]. Estimated blood loss per pt/scene ___.
 12-lead at ___ for epigastric/upper abd pain: ___ / not indicated: ___.
 IV ___g ___ at ___. NS ___ mL at ___ for ___, reassessed ___ / none.
