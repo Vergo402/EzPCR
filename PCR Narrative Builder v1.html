@@ -283,6 +283,13 @@ body.ws-dragging { user-select: none; -webkit-user-select: none; }
   background: transparent; border: 1px dashed var(--border); border-radius: 999px;
 }
 .ws-hidden-chip:hover { color: var(--ink); border-color: var(--border-strong); }
+/* A twin already stated earlier reads as faded material; its handle and its × sit
+   outside the body and stay at full strength — the sentence is dimmed, not disabled.
+   The chip rides INSIDE the body, and opacity is not something a child can climb back
+   out of, so it compensates with full-strength ink instead: it is the way out. */
+.ws-line.ws-suppressed > .ws-line-body { opacity: .55; }
+.ws-line.ws-suppressed .ws-twin-chip { color: var(--ink); border-color: var(--border-strong); }
+.ws-twin-chip { margin-left: 6px; }
 .ws-hidden-pop {
   position: absolute; top: 26px; right: 0; z-index: 50; background: var(--sheet);
   border: 1px solid var(--border); border-radius: var(--radius);
@@ -1255,6 +1262,11 @@ function isTimeField(p) {
 
 /** lineId -> {line, ownerType:"shell"|"block"|"template"|"disposition", ownerId, sectionId, sectionName} */
 const LINE_INDEX = Object.create(null);
+/**
+ * lineId -> twin group id. Sentences in one group say the same clinical thing, so
+ * only the first of them to PRINT belongs in the narrative (DOC.meta.twins).
+ */
+const TWIN_OF = Object.create(null);
 /** ownerKey -> Set of field ids (fills + choice ids) declared beneath it */
 const OWNER_FIELDS = Object.create(null);
 /** category name -> {type:"block"|"template", id} */
@@ -1320,6 +1332,22 @@ function buildIndexes() {
     // An addendum-only template is never a category pick (addendum-1 §D).
     if (!t.addendumOnly) CATEGORY_INDEX[t.name] = { type: "template", id: t.id };
   });
+  // Twin groups last: every line is indexed by now, so an id DOC names but no longer
+  // declares can be dropped quietly rather than pointing at nothing.
+  (((DOC.meta || {}).twins) || []).forEach(function (g) {
+    (g.lines || []).forEach(function (id) { if (LINE_INDEX[id]) TWIN_OF[id] = g.id; });
+  });
+}
+
+/** The name a twin cites when it says where a sentence was already stated. */
+function twinOwnerName(lineId) {
+  const rec = LINE_INDEX[lineId];
+  if (!rec) return "";
+  if (rec.ownerType === "block" || rec.ownerType === "template") {
+    const res = resolveOwner(rec.ownerId);
+    if (res) return res.owner.name;
+  }
+  return rec.sectionName || "";
 }
 
 /* ============================ state ============================ */
@@ -1345,7 +1373,9 @@ function makeDraft(label, unit) {
     hidden: {},
     // Order the medic arranged, if any (see ORDERING). A null topOrder is pristine:
     // it means "follow DOC", which an empty array could not say.
-    topOrder: null, lineOrder: {}, paraOverrides: {}
+    topOrder: null, lineOrder: {}, paraOverrides: {},
+    // Twin sentences the medic wants stated twice anyway, keyed "line:<lineId>".
+    showAnyway: {}
   };
 }
 let state = { drafts: [makeDraft("Call")], activeDraft: 0 };
@@ -1712,6 +1742,10 @@ function renderLine(line, ctx, sectionId, sectionName, missing) {
   };
   if (!lineEligible(line, ctx)) return [];
   if (lineHidden(line.id, ctx.d)) return [];
+  // A twin already stated earlier in the narrative emits nothing AND asks nothing —
+  // the gate sits above the tri/esc branches, whose open items go straight to the
+  // outer `missing` and would otherwise leak past it.
+  if (ctx.suppressed && ctx.suppressed[line.id]) return [];
 
   if (line.kind === "fork") {
     const chosen = forkSel(line.id);
@@ -1849,10 +1883,12 @@ function subActive(owner, sb) {
 /**
  * THE traversal. Every consumer (preview HTML, copy text, char count, missing list,
  * click-to-jump) derives from this one structure so they can never disagree.
+ * Runs TWICE per assemble() — see assemble() — so it must stay free of side effects
+ * on anything but the `missing` list it builds.
  * @param {Object} ctx
  * @returns {{sections:Array<{id,name,lines:Array<{lineId,raw,withheld}>}>, missing:Array}}
  */
-function assemble(ctx) {
+function assembleOnce(ctx) {
   const missing = [];
   const sections = [];
   const shellSecs = (DOC.shell && DOC.shell.sections) || [];
@@ -1886,6 +1922,102 @@ function assemble(ctx) {
     }
   }
   return { sections: sections, missing: missing };
+}
+
+/**
+ * THE assembler. Twin dedupe needs to know, before any open item is committed, which
+ * sentence of a twin group PRINTS first — and print order is not assembly order once
+ * the medic has dragged something. So the traversal runs twice: a dry pass to learn
+ * what would emit and in what order, then the real one with the losers gated out.
+ * The second pass is skipped entirely when nothing is suppressed, which is what keeps
+ * a chart with no stacked twins byte-identical to the one-pass narrative.
+ * @param {Object} ctx @returns {Object} the assembly, plus `suppressed` / `twinShown`
+ */
+function assemble(ctx) {
+  ctx.suppressed = null;
+  const dry = assembleOnce(ctx);
+  const twins = twinSuppression(dry, ctx);
+  let asm = dry;
+  if (Object.keys(twins.skip).length) {
+    ctx.suppressed = twins.skip;
+    asm = assembleOnce(ctx);
+  }
+  ctx.suppressed = twins.skip;
+  asm.suppressed = twins.skip;
+  asm.twinShown = twins.shown;
+  noteDuplicates(asm);
+  return asm;
+}
+
+/**
+ * Which twin sentences lose. Rows are put in PRINT order — the same ordinal-then-
+ * assembly-order sort paragraphs() makes, so a dragged block counts as earlier when it
+ * reads earlier — and the first EMITTING line of each group keeps the group. A line
+ * that emitted nothing produced no row and so never claims anything.
+ *
+ * Fork arms take part on their own: a sub-line's row carries its own lineId, and its
+ * ordinal comes from the fork it rides in (FORK_PARENT), which is the unit that moves.
+ * @param {Object} asm the dry assembly @param {Object} ctx
+ * @returns {{skip:Object, shown:Object}} lineId -> {by, byOwner}; `shown` holds the
+ *   ones that would have been skipped but for the medic's own show-anyway.
+ */
+function twinSuppression(asm, ctx) {
+  const anyway = ctx.d.showAnyway || {};
+  const index = globalUnitIndex(ctx);
+  const rows = [];
+  let carried = -1;
+  (asm.sections || []).forEach(function (s) {
+    s.lines.forEach(function (l) {
+      const at = index.get("line:" + (FORK_PARENT[l.lineId] || l.lineId));
+      if (at != null) carried = at;
+      rows.push({ lineId: l.lineId, sort: at != null ? at : carried, seq: rows.length });
+    });
+  });
+  rows.sort(function (a, b) { return (a.sort - b.sort) || (a.seq - b.seq); });
+
+  const winner = Object.create(null);
+  const skip = Object.create(null);
+  const shown = Object.create(null);
+  rows.forEach(function (r) {
+    const g = TWIN_OF[r.lineId];
+    if (!g) return;
+    if (!winner[g]) { winner[g] = r.lineId; return; }
+    if (winner[g] === r.lineId) return;            // one line, several rows
+    const cite = { by: winner[g], byOwner: twinOwnerName(winner[g]) };
+    if (anyway["line:" + r.lineId]) shown[r.lineId] = cite;
+    else skip[r.lineId] = cite;
+  });
+  return { skip: skip, shown: shown };
+}
+
+/**
+ * The safety net under twin dedupe: two sentences DOC never paired that nonetheless
+ * came out word for word the same. Each repeat past the first raises a line-level open
+ * item, so the count shows it and Copy asks once — a soft gate, never a suppression,
+ * because an identical sentence can be a true second event.
+ * @param {Object} asm mutated: repeats are appended to asm.missing
+ */
+function noteDuplicates(asm) {
+  const seen = Object.create(null);
+  const noted = Object.create(null);
+  paragraphs(asm).forEach(function (rows) {
+    rows.forEach(function (l) {
+      const k = dupKey(l.raw);
+      if (k === "") return;
+      if (!seen[k]) { seen[k] = true; return; }
+      if (noted[l.lineId]) return;
+      noted[l.lineId] = true;
+      const rec = LINE_INDEX[l.lineId];
+      noteLineLevel(asm.missing, (rec && rec.line) || { id: l.lineId, label: l.lineId },
+        (rec && rec.sectionId) || "", (rec && rec.sectionName) || "",
+        "__dup__" + l.lineId, "duplicate sentence", "duplicate");
+    });
+  });
+}
+/** Two sentences are the same sentence when only spacing, case, or a full stop differ. */
+function dupKey(raw) {
+  const t = stripSentinels(String(raw)).replace(/\s+/g, " ").trim().toLowerCase();
+  return t.replace(/\.+$/, "");
 }
 /** The disposition picker is a worksheet row like any other, so it needs a line shape. */
 const DISPO_LINE = { id: "disposition", kind: "dispo", label: "Disposition" };
@@ -2103,7 +2235,10 @@ function buildOpenIndex(asm) {
 function condSignature(ctx) {
   return Object.keys(ctx.cond).map(function (k) { return ctx.cond[k] ? "1" : "0"; }).join("") +
     "|" + ctx.blockIds.join(",") + "|" + (ctx.d.disposition || "") +
-    "|" + (ctx.collapse ? 1 : 0) + "|" + (ctx.doaActive ? 1 : 0);
+    "|" + (ctx.collapse ? 1 : 0) + "|" + (ctx.doaActive ? 1 : 0) +
+    // Twin dedupe turns on a VALUE edit, not a structural one, so the suppressed set
+    // has to be part of the signature or a newly-dimmed sentence never repaints.
+    "|" + Object.keys((lastAsm && lastAsm.suppressed) || {}).sort().join(",");
 }
 
 /** A cond/opt line stays folded into a "+ label" row until it is relevant or opened. */
@@ -2274,6 +2409,50 @@ function unitWrap(host, unitKey, ctx, extraClass) {
 }
 
 /**
+ * Render one LINE unit whole: its wrap, its rows, and the twin-dedupe chip when the
+ * assembler had something to say about it. Deliberately unguarded — the callers
+ * differ on whether a hidden line reaches them, so each keeps its own check.
+ * @param {Element} host @param {string} unitKey "line:<id>" @param {Object} ctx
+ * @param {string} [extraClass]
+ */
+function renderUnit(host, unitKey, ctx, extraClass) {
+  const rec = LINE_INDEX[unitKey.slice(5)];
+  if (!rec) return;
+  const body = unitWrap(host, unitKey, ctx, extraClass);
+  lineRow(body, rec.line, ctx);
+  twinChip(body, rec.line.id, ctx);
+}
+
+/**
+ * A twin the assembler skipped is DIMMED on the worksheet, never removed: the medic
+ * can still read and edit every field, and the chip says where the sentence was
+ * already stated and offers to state it twice anyway. Pressing it again takes it back
+ * out. Nothing here suppresses a row — that decision belongs to the assembler alone.
+ * @param {Element} body the unit's .ws-line-body @param {string} lineId @param {Object} ctx
+ */
+function twinChip(body, lineId, ctx) {
+  const asm = lastAsm || {};
+  const cite = (asm.suppressed || {})[lineId] || (asm.twinShown || {})[lineId];
+  if (!cite) return;
+  const on = !!(ctx.d.showAnyway || {})["line:" + lineId];
+  const row = body.children[0];
+  if (!row) return;
+  if (!on) body.parentNode.classList.add("ws-suppressed");
+  const chip = el("button", "ws-hidden-chip ws-twin-chip", on ? "shown twice · hide"
+    : "already stated in " + (cite.byOwner || "an earlier sentence") + " · show anyway");
+  chip.type = "button";
+  chip.title = on ? "state this once only" : "state this a second time anyway";
+  chip.addEventListener("click", function (e) {
+    e.stopPropagation();
+    const d = draft();
+    const m = d.showAnyway || (d.showAnyway = {});
+    if (on) delete m["line:" + lineId]; else m["line:" + lineId] = true;
+    structuralEdit();
+  });
+  row.appendChild(chip);
+}
+
+/**
  * Walk the medic's arranged order top to bottom: a fixed shell section, the ONE owner
  * box a "owner:" entry names, the disposition section, or a line dragged all the way to
  * the top level with no section of its own. A pristine draft's effectiveTopOrder() is
@@ -2301,7 +2480,7 @@ function renderWorksheet() {
       if (o) ownerBox(ws, o, ctx);
     } else if (key.indexOf("line:") === 0) {
       const rec = LINE_INDEX[key.slice(5)];
-      if (rec && !lineHidden(rec.line.id, ctx.d)) lineRow(unitWrap(ws, key, ctx, "ws-loose"), rec.line, ctx);
+      if (rec && !lineHidden(rec.line.id, ctx.d)) renderUnit(ws, key, ctx, "ws-loose");
     }
   });
   ui.condSig = condSignature(ctx);
@@ -2349,7 +2528,7 @@ function shellSection(host, s, ctx) {
   if (s.note) sec._rows.appendChild(el("div", "ws-note", s.note));
   regionUnits("sec:" + s.id, ctx).forEach(function (key) {
     const rec = LINE_INDEX[key.slice(5)];
-    if (rec && !lineHidden(rec.line.id, ctx.d)) lineRow(unitWrap(sec._rows, key, ctx), rec.line, ctx);
+    if (rec && !lineHidden(rec.line.id, ctx.d)) renderUnit(sec._rows, key, ctx);
   });
 }
 
@@ -2411,7 +2590,7 @@ function ownerBox(host, ownerRec, ctx) {
       if (sb) sec._rows.appendChild(el("div", "ws-subhead", sb.name));
       prevSb = sb;
     }
-    lineRow(unitWrap(sec._rows, key, ctx), rec.line, ctx);
+    renderUnit(sec._rows, key, ctx);
   });
   if (owner.handoff) maybeHandoffButton(sec._rows, owner, ctx);
 }
@@ -2422,7 +2601,7 @@ function dispositionSection(host, ctx) {
   lineRow(sec._rows, DISPO_LINE, ctx);
   regionUnits("sec:disposition", ctx).forEach(function (key) {
     const rec = LINE_INDEX[key.slice(5)];
-    if (rec && !lineHidden(rec.line.id, ctx.d)) lineRow(unitWrap(sec._rows, key, ctx), rec.line, ctx);
+    if (rec && !lineHidden(rec.line.id, ctx.d)) renderUnit(sec._rows, key, ctx);
   });
 }
 
@@ -3227,12 +3406,19 @@ function countBlanks(text) {
   return m ? m.length : 0;
 }
 
-/** Open items split by kind: AMBER blanks to fill, PROPOSED defaults to confirm. */
+/** Open items split by kind: AMBER blanks to fill, PROPOSED defaults to confirm,
+ *  DUPLICATE repeated sentences. Duplicates count their own way so Copy can name them
+ *  without inflating "to fill". */
 function openCounts() {
   const m = (lastAsm && lastAsm.missing) || [];
-  let missing = 0, proposed = 0;
-  m.forEach(function (x) { if (x.kind === "proposed") proposed++; else missing++; });
-  return { missing: missing, proposed: proposed, open: missing + proposed };
+  let missing = 0, proposed = 0, duplicate = 0;
+  m.forEach(function (x) {
+    if (x.kind === "proposed") proposed++;
+    else if (x.kind === "duplicate") duplicate++;
+    else missing++;
+  });
+  return { missing: missing, proposed: proposed, duplicate: duplicate,
+           open: missing + proposed + duplicate };
 }
 
 /** Repaint #missing-badge: text-derived while polishing, worksheet-derived otherwise. */
@@ -3547,6 +3733,7 @@ function doCopy() {
     const bits = [];
     if (openActive && c.missing) bits.push(c.missing + " to fill");
     if (openActive && c.proposed) bits.push(c.proposed + " to confirm");
+    if (openActive && c.duplicate) bits.push(c.duplicate + " duplicate");
     if (overActive) bits.push(over.toLocaleString("en-US") + " over cap");
     btn.textContent = bits.join(" · ") + " — press again to copy anyway";
     btn.classList.add("confirming");
@@ -3676,7 +3863,8 @@ function restore() {
         // Drafts saved before ordering existed are pristine by definition: no stored
         // order at all, which is exactly what null / empty say (see ORDERING).
         topOrder: d.topOrder || null, lineOrder: d.lineOrder || {},
-        paraOverrides: d.paraOverrides || {}
+        paraOverrides: d.paraOverrides || {},
+        showAnyway: d.showAnyway || {}   // drafts saved before twin dedupe existed
       });
       // Migrate pre-owner-stack drafts: the old activeTemplate / activeAddendum pair
       // becomes the tail of the one owner stack, in that order.
