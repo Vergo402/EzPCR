@@ -1,4 +1,4 @@
-# PCR Narrative Standard, Draft v0.10
+# PCR Narrative Standard, Draft v0.11
 Cortlandt-Peekskill Regional Paramedic Services, emsCharts, NYS ALS Collaborative Protocols
 Author: A. Vergo. Status: working draft, aligned to NYS Collaborative Protocols v26.1 (eff. 9/1/26) and the National Field Triage Red/Yellow criteria. Shell, four dispositions, all 18 blocks, all 6 dedicated templates. Complete first full draft.
 
@@ -19,16 +19,16 @@ Conventions
 ## 1. SHELL (every call)
 
 **Dispatch / Response / Arrival**
-35M___ dispatched to ___ for ___. 35M___ responded [emergency / non-emergency]. 35M___ arrived on scene (___ on location) and found ___ yo [M/F] pt ___ {position, location, appearance, scene}.
+35M___ dispatched to ___ for ___. 35M___ responded [emergency / non-emergency]. 35M___ arrived on scene (___ on location) and found ___ yo [M / F / other…] pt ___ {position, location, appearance, scene}.
 
 **Primary**
-{traumaGeneral / traumaMinor / burns only — traumaMajor uses its own spinal motion restriction line in §6:} Spinal motion restriction: [c-collar applied and secured to stretcher at ___ for ___ {AMS or intoxication, neck/spine pain or tenderness, weakness/tingling/numbness since injury, spinal deformity, distracting injury, high-risk MOI: axial load, high-speed MVC/rollover, ped or bike struck, fall >3 ft/5 steps/pt height, or Red criteria blunt} / not indicated: no AMS, no spine pain or tenderness, no neuro sx, no deformity, no distracting injury, MOI not high-risk {use caution >65}].
-Pt [+/-] patent airway, [+/-] breathing w/ initial L/S ___, [+/-] ___ pulse {location, quality}, skin ___.
+{traumaGeneral / traumaMinor / burns only — traumaMajor uses its own spinal motion restriction line in §6:} Spinal motion restriction: [c-collar applied and secured to stretcher for ___ {AMS or intoxication, neck/spine pain or tenderness, weakness/tingling/numbness since injury, spinal deformity, distracting injury, high-risk MOI: axial load, high-speed MVC/rollover, ped or bike struck, fall >3 ft/5 steps/pt height, or Red criteria blunt} / not indicated: no AMS, no spine pain or tenderness, no neuro sx, no deformity, no distracting injury, MOI not high-risk {use caution >65}].
+Pt [+ / - / other…] patent airway, [+/-] breathing w/ initial L/S [bilateral / clear / other…], [+ / - / Reg / IRR / IR / Radial / Carotid / Femoral / other…] {any that apply} ___ pulse {location, quality}, skin ___.
 {Conditional line, only if something was done before the full assessment:} ___ {e.g. "Pt placed on NRB 15 LPM." "Narcan 4 mg IN administered." "Tourniquet applied R thigh ___." Delete if nothing.}
 
 **Mental status / CC / History**
-Pt A&Ox___ (P, P, T, E), [A/V/P/U], [+ LOC ~___ min / - LOC / unknown LOC], and complaining of ___ {onset, duration, in pt's words}. [Pt / bystanders / family / healthcare staff] state ___.
-Pt PMHx ___. Meds [per list / ___ / noncompliant ___] {any that apply}. Allergies [NKDA / ___]. {Add: last oral intake, last menstrual period, DNR/MOLST status when relevant.}
+Pt A&Ox___ (P, P, T, E), [A/V/P/U], [+ LOC ~___ min / - LOC / unknown LOC], and complaining of ___ {onset, duration, in pt's words}. [Pt / bystanders / family / healthcare staff / other…] state ___.
+Pt PMHx ___. Meds [per list / noncompliant ___ / other…] {any that apply}. Allergies [NKDA / ___]. {Add: last oral intake, DNR/MOLST status when relevant.}
 
 **Assessment**
 Vitals as noted in emsCharts activity log, [stable / concerning for ___] {restate only the numbers that drive the DDx or a treatment}.
@@ -38,7 +38,7 @@ Working impression ___. DDx ___.
 {Where the call-type blocks and templates are authored — treatments, withheld treatments with reason, reassessment, escalation line. This marks authoring position, not print position: each stacked block or template prints as its own paragraph AFTER the assessment paragraph (impression, then Secondary below) and before the disposition paragraph, in the order they were stacked.}
 
 **Secondary**
-Secondary assessment [head-to-toe / focused ___] unremarkable except ___.
+Secondary assessment [focused ___ / head-to-toe exam] unremarkable except ___.
 
 **Ongoing / Medical control**
 Pt reassessed en route at ___: ___ {the load-bearing change: pain 7 to 3, SpO2 88 to 96, rhythm unchanged}. Remaining vitals per activity log.
@@ -47,16 +47,16 @@ Pt reassessed en route at ___: ___ {the load-bearing change: pain 7 to 3, SpO2 8
 **Disposition (pick one)**
 
 *1) ALS transport*
-Pt txp ALS to ___. Hospital notified via [cell / radio] at ___. [No pt changes throughout txp / ___]. Pt transferred to ED staff, report given to RN ___. 35M___ returned to service without further incident.
+Pt txp ALS to ___. Hospital notified via [cell / radio / smartphone app / other…]. [No pt changes throughout txp / other…]. Pt transferred to ED staff, report given to RN. 35M___ returned to service without further incident.
 
 *2) Transport BLS*
-Pt assessed, no ALS intervention indicated: ___ {the reason in one clause: 12-lead no acute changes, vitals stable, BGL normal, pain controlled}. Pt released to ___ {agency} BLS crew for txp to ___, report given to EMT ___. Pt [stable / unchanged] at time of release. 35M___ returned to service without further incident.
+Pt assessed, no ALS intervention indicated: ___ {the reason in one clause: 12-lead no acute changes, vitals stable, BGL normal, pain controlled}. Pt released to ___ {agency} BLS crew for txp to ___, report given to EMT. Pt [stable / unchanged] at time of release. 35M___ returned to service without further incident.
 
 *3) 35M# cancelled*
-35M___ cancelled [en route / on scene] by ___ {agency, unit, dispatch} at ___ for ___ {no pt found, pt refused prior to arrival, BLS handling, duplicate call}. [No pt contact made. / Pt contact made, ___ {brief assessment if any}.] 35M___ returned to service without further incident.
+35M___ cancelled [en route / on scene / other…] by ___ {agency, unit, or dispatch} for ___ {e.g. no pt found, pt refused prior to arrival, or BLS handling}. [No pt contact made. / other…] 35M___ returned to service without further incident.
 
 *4) RMA by 35M#*
-Pt [refuses transport / refuses assessment / refuses ___] against medical advice. Pt A&Ox4, gait ___, [no evidence of AMS, intoxication, head injury, suicidal intent, or irrational behavior / ___], demonstrates capacity by restating in own words the nature of the complaint and the consequences of refusing. Transport to hospital offered. Pt advised that refusing may increase the possibility of serious illness, permanent disability, and death, including ___ {the worst plausible outcome for this complaint}. Pt advised to seek medical attention, follow-up instructions given: ___. Pt confirmed understanding and continues to refuse. Pt advised to call 911 with any return or worsening of symptoms. High-risk refusal [N / Y: ___ {>65, HR >120 or <50, SBP >200 or <90, RR >29 or <10, CP/SOB/syncope/focal deficit, significant MOI, ALS meds given}, medical control contacted, see above]. RMA signed by pt, witnessed by ___ {PD, family, partner}. Pt left in care of [responsible adult ___ / self]. 35M___ returned to service without further incident.
+Pt [refuses transport / refuses assessment / other…] against medical advice. Pt A&Ox4, [no evidence of AMS, intoxication, head injury, suicidal intent, or irrational behavior / other…], demonstrates capacity by restating in own words the nature of the complaint and the consequences of refusing. Transport to hospital offered. Pt advised that refusing may increase the possibility of serious illness, permanent disability, and death, including ___ {the worst plausible outcome for this complaint}. Pt advised to seek medical attention, follow-up instructions given: ___. Pt confirmed understanding and continues to refuse. Pt advised to call 911 with any return or worsening of symptoms. High-risk refusal [N / Y: ___ {age >65, HR >120 or <50, SBP >200 or <90, RR >29 or <10, CP/SOB/syncope/focal deficit, significant MOI, ALS meds given}, medical control contacted, see above]. RMA signed by pt, witnessed by ___ {PD, family, partner}. Pt left in care of [self / responsible adult ___ / other…]. 35M___ returned to service without further incident.
 
 ---
 
@@ -66,43 +66,43 @@ Two sub-blocks. Chest pain with a normal rhythm uses 2a only. A rhythm problem w
 Escalates to: STEMI template (2a). Cardiac Arrest template if pulses lost (2b). Hypotension with a shock picture: name the etiology in DDx and add the matching block (Tox, Sepsis, Trauma, Allergic).
 
 ### 2a. Cardiac / ACS
-Pt describes ___ {OPQRST: onset, provocation, quality, radiation, severity ___/10, time, exertional or at rest, prior similar}. Associated [SOB / diaphoresis / N/V / lightheadedness / syncope / palpitations / none] {any that apply}. Cardiac risk factors ___ {HTN, hyperlipidemia, diabetes mellitus, smoker, FHx, prior MI/CABG/stent, cocaine use}.
-12-lead acquired at ___ {before NTG if pt has no Rx NTG}: ___ {rhythm, rate, axis, intervals, ST/T changes by lead, or "no acute changes"}, transmitted at ___. {If inferior changes: R-sided 12-lead ___. If STE: jump to escalation line.}
+Pt describes ___ {OPQRST}. Associated [none / SOB / diaphoresis / N/V / lightheadedness / syncope / palpitations / other…] {any that apply}. Cardiac risk factors [diabetes mellitus / FHx / HTN / hyperlipidemia / prior MI/CABG/stent / smoker / stimulant use / other…] {any that apply}.
+12-lead acquired at ___ {HH:MM}: ___ {rhythm, rate, axis, intervals, ST/T changes by lead, or "no acute changes"}, transmitted at ___ {HH:MM}. {If inferior changes: R-sided 12-lead ___. If STE: jump to escalation line.}
 ASA 324 mg chewed [administered at ___ / withheld: ___ {allergy, unable to chew, active GI bleed}]. {Took ASA before arrival but dose uncertain: give and say why.}
 NTG 0.4 mg SL [x___ at ___, ___ min apart, SBP ___ before each dose, pain ___ to ___/10 / withheld: ___ {SBP ≤120 or MAP ≤90, R-sided changes, phosphodiesterase-5 inhibitor within 48h}]. {SBP drops <100 after NTG: supine, NS 500 mL bolus at ___, reassessed ___.}
-IV ___g ___ at ___ {or IO, or attempts failed x___}. Fluids [none / ___ mL NS bolus for SBP ___, reassessed ___].
+IV ___g ___.
 Fentanyl ___ mcg [IV / IM / IN] at ___ {1-1.5 mcg/kg, repeat after 10 min, max 200 mcg total} for pain ___/10 unrelieved by NTG, pain ___ to ___/10 / withheld: ___ {pain improved, pt declined, SBP, AMS}. {No ketorolac in suspected ACS.}
 {Symptomatic HTN only:} BP ___ with ___ {headache, vision change, CP, neuro deficit}. Neuro exam ___. No antihypertensive given.
-{Hypotension only:} SBP ___, ___ {skin, mental status, cap refill}. Suspected etiology ___. ___ mL NS bolus at ___, reassessed SBP ___. {Pressor only w/ med control, cite in Medical control line.}
-{If performed:} Serial 12-lead at ___: [unchanged / ___].
+{Hypotension only:} SBP ___, ___ {skin, mental status, cap refill}. ___ mL NS bolus, reassessed SBP ___. {Pressor only w/ med control, cite in Medical control line.}
+{If performed:} Serial 12-lead: [unchanged / other…].
 **Escalation line:** STEMI criteria [not met on serial 12-leads / MET: ___ {leads, mm}, STEMI alert called to ___ at ___, 12-lead transmitted. Switch to STEMI template.]
 
 ### 2b. Cardiac / Dysrhythmia
-Monitor at ___: ___ {rhythm, rate, regularity, QRS width, P-wave relationship, block degree and type}. 12-lead at ___ confirms ___. {Print and attach the strip that shows the diagnosis.}
+Monitor: ___ {rhythm, rate, regularity, QRS width, P-wave relationship, block degree and type}. 12-lead confirms ___. {Print and attach the strip that shows the diagnosis.}
 Pt [hemodynamically stable / UNSTABLE: ___ {which of: SBP <90, AMS, ischemic CP, acute CHF, syncope}]. Onset ___ {known time, or "unknown, >48h" for rate-control decisions}. Prior Hx of this rhythm [Y, ___ / N]. Anticoagulated [Y ___ / N].
 IV ___g ___ at ___.
-{If performed:} Pads applied at ___ [prophylactically / for pacing / for cardioversion].
+{If performed:} Pads applied [prophylactically / for pacing / for cardioversion].
 
 {Pick the fork that applies. Delete the rest.}
 
 *Bradycardia:*
 Atropine 1 mg IV at ___ {q3 min, max 3 mg}, x___, HR ___ to ___, [symptoms resolved / no response] / withheld: ___ {asymptomatic, 2nd-degree type II or 3rd-degree block with poor perfusion went straight to pacing, transplant}.
-TCP initiated at ___, rate ___, capture at ___ mA confirmed by [pulse / SpO2 pleth / ___]. Sedation: midazolam [2.5 mg IV / 5 mg IM] at ___ {repeat q5 if SBP >100 or MAP >65} / withheld: ___ {SBP, AMS}.
+TCP initiated, rate ___, capture at ___ mA confirmed by [palpable pulse / SpO2 pleth / other…]. Sedation: midazolam [2.5 mg IV / 5 mg IM] at ___ {repeat q5 if SBP >100 or MAP >65} / withheld: ___ {SBP, AMS}.
 Epi infusion started at ___ mcg/min at ___ {start 5 mcg/min, titrate to MAP >65 or SBP >100}, titrated to ___ mcg/min, MAP ___ to ___ / not indicated: ___.
 
 *Narrow-complex tachycardia:*
-{Stable, REGULAR:} Vagal maneuver at ___ [modified Valsalva / ___ (no carotid massage)], [converted / no change]. Adenosine 6 mg rapid IV with flush at ___, [converted to ___ at ___ / no change / transient block revealing ___]. Adenosine 12 mg at ___, ___.
-{Stable, IRREGULAR:} Diltiazem ___ mg IV over 2 min at ___ {0.25 mg/kg, max 25 mg} for ___ {A-fib/flutter RVR}, HR ___ to ___, BP ___ to ___ / metoprolol 5 mg IV over 2 min at ___ (pt on Rx beta-blocker) / withheld: ___ {SBP, WPW, CHF}. {Uncontrolled after 15 min or recurrent:} Diltiazem ___ mg at ___ {0.35 mg/kg, max 35 mg} / second metoprolol 5 mg at ___.
-{UNSTABLE, regular or irregular:} Sedation [midazolam 2.5 mg IV / 5 mg IM] ___ at ___ / withheld: ___ {SBP, AMS, time-critical}. Synchronized cardioversion 200 J at ___, [converted to ___ / repeated at ___ J at ___]. Pt [aware / not aware] during shock. 12-lead post-conversion at ___.
+{Stable, REGULAR:} Vagal maneuver [modified Valsalva / other…], [converted / no change]. Adenosine 6 mg rapid IV with flush, [converted to ___ / no change / transient block revealing ___]. Adenosine 12 mg, ___.
+{Stable, IRREGULAR:} [Diltiazem ___ mg IV over 2 min {0.25 mg/kg, max 25 mg} for ___ {A-fib/flutter RVR}, HR ___ to ___, BP ___ to ___ / metoprolol 5 mg IV over 2 min (pt on Rx beta-blocker)] {any that apply} / withheld: ___ {SBP, WPW, CHF}. {Uncontrolled after 15 min or recurrent:} Diltiazem ___ mg {0.35 mg/kg, max 35 mg} / second metoprolol 5 mg at ___.
+{UNSTABLE, regular or irregular:} Sedation [midazolam 2.5 mg IV / 5 mg IM] ___ / withheld: ___ {SBP, AMS, time-critical}. Synchronized cardioversion 200 J, [converted to ___ / repeated at ___ J]. Pt [aware / not aware] during shock. 12-lead post-conversion: ___.
 
 *Wide-complex tachycardia:*
 QRS ___ ms. Treated as VT [stable / UNSTABLE].
-{Stable:} Amiodarone 150 mg in 100 mL NS over 10 min at ___ / lidocaine ___ mg IV at ___ {1.5 mg/kg}, [converted at ___ / rate ___ to ___ / no change] / withheld: ___ {unstable, went to cardioversion; polymorphic}.
-{UNSTABLE:} Sedation [midazolam 2.5 mg IV / 5 mg IM] at ___ / withheld: ___. Synchronized cardioversion 100 J at ___ {200 J if irregularly irregular; max 3 attempts}, [converted to ___ / repeated ___ J at ___, ___ J at ___]. Antiarrhythmic post-conversion per med control: ___.
-{Torsades / med control:} Mag 2 g IV over [10 min stable / 2 min unstable] at ___ per Dr. ___.
+{Stable:} [Amiodarone 150 mg in 100 mL NS over 10 min / lidocaine IV / other…] {any that apply}, [converted / no change / other…] / withheld: ___ {unstable, went to cardioversion; polymorphic}.
+{UNSTABLE:} Sedation [midazolam 2.5 mg IV / 5 mg IM / other…] / withheld: ___. Synchronized cardioversion 100 J {200 J if irregularly irregular; max 3 attempts}, [converted to ___ / repeated ___ J, ___ J / other…]. Antiarrhythmic post-conversion per med control: ___.
+{Torsades / med control:} Mag 2 g IV over [10 min stable / 2 min unstable] per Dr. ___.
 
-Post-intervention rhythm ___ at ___, 12-lead at ___: ___. Pt [symptoms resolved / ___].
-**Escalation line:** Pt remained [hemodynamically stable / stable after intervention] throughout / became unstable at ___, ___ {intervention}. Pulses [maintained throughout / LOST at ___. Switch to Cardiac Arrest template.]
+Post-intervention rhythm ___, 12-lead: ___. Pt [symptoms resolved / other…].
+**Escalation line:** Pt remained [hemodynamically stable / stable after intervention / Unstable] throughout / became unstable, ___ {intervention} / other…. Pulses [maintained throughout / LOST. Switch to Cardiac Arrest template.]
 
 ---
 
@@ -507,12 +507,12 @@ Prenote update at ___: ETA, deficits, LKW, family [following / contact ___ given
 ## 24. TEMPLATE: ACTIVE SHOOTER / VIOLENT INCIDENT
 {Operational narrative. Clinical care per patient goes on that patient's PCR with the right block; this template is for the incident-role chart. RTF is regionalized and no county-level plan exists: default posture is staged until PD declares the scene, and this chart documents exactly that.}
 
-35M___ [dispatched / self-dispatched per ___] to reported active shooter at ___ at ___. Staged at ___ {location} at ___ per [dispatch / IC]. Scene declared [unsecured / warm zone established at ___ / secured at ___] by ___ {PD/IC}.
-ICS: incident command ___ at ___, 35M___ assigned [staging / casualty collection point at ___ / treatment / transport] by ___ at ___. Unified command [Y/N]. MCI [declared at ___, level ___ → MCI template supplements / not declared].
-Entry: [remained staged, no pt contact, released at ___ by ___ / entered warm zone at ___ with ___ {LE escort/RTF}, PPE ___].
-Care rendered under [TECC/warm zone constraints]: ___ {hemorrhage control, airway positioning, rapid extraction; interventions deliberately deferred to CCP/cold zone: ___}. Pts moved to CCP at ___.
+35M___ [dispatched / self-dispatched per ___ / other…] to reported active shooter at ___. Staged at ___ {location} per [dispatch / IC / other…]. Scene declared [unsecured / secured / other…] by ___ {PD/IC}.
+ICS: incident command ___, 35M___ assigned [staging / casualty collection point at ___ / treatment / transport / other…] by ___. Unified command [Y / N / other…]. MCI [declared, level ___ → MCI template supplements / not declared / other…].
+Entry: [remained staged, no pt contact, released / entered warm zone with ___ {LE escort/RTF}, PPE ___].
+Care rendered under [TECC/warm zone constraints]: ___ {hemorrhage control, airway positioning, rapid extraction; interventions deliberately deferred to CCP/cold zone: ___}. Pts moved to CCP.
 Patients treated/transported by 35M___: ___ {triage tag #s; each gets own PCR, cross-referenced}.
-Accountability: crew ___ / ___, both accounted for at ___. Released from incident by ___ at ___.
+Accountability: both crew accounted for. Released from incident by ___.
 
 ## 25. TEMPLATE: MCI
 {Incident-role chart. Each transported pt still gets a PCR; abbreviated per MCI standard, cross-referenced by triage tag #.}
@@ -629,3 +629,5 @@ Abbreviations kept in the standard's emitted text, for a reader without EMS back
 **v0.10 — 2026-09-02 (2).** Scored-field ruling: GCS (all three lines), NYS-LAMS, and burn % BSA are entered as their components — E/V/M, the four NYS-LAMS findings, and the rule-of-nines regions checked — with the builder computing and printing the total in the position the standard already prints it (Conventions updated). GCS's E/V/M and NYS-LAMS's droop/drift/grip become numbered-pill choices; NYS-LAMS speech stays a plain finding, uncounted, matching the existing total of ___/6. The burns line is reworded to surface the % BSA computed from rule-of-nines regions ahead of the parenthetical instead of a free-text guess by palm method; first-degree exclusion moves from the line's note into a note on the new % BSA total. No wording the standard prints elsewhere changes, and no version bump.
 
 **v0.10 — 2026-09-03.** Abbreviation spell-out pass: 26 abbreviations that weren't self-evident to an outside reader were spelled out in full wherever they appear in emitted text, hints, labels, and notes (LMP, EBL, non-tender for NT, bilaterally for bilat, private medical doctor for PMD, postpartum hemorrhage for PPH, spinal motion restriction for SMR, creatine kinase-relevant, paroxysmal nocturnal dyspnea for PND, packs per day for ppd, phosphodiesterase-5 inhibitor for PDE-5, diabetes mellitus / type 2 diabetes mellitus for DM/DM2, Comprehensive Psychiatric Emergency Program-capable for CPEP-capable, Director of Community Services for DCS, Mental Hygiene Law for MHL, gestational diabetes mellitus for GDM, hyperlipidemia for HLD, last known alive for LKA, musculoskeletal for MSK, rupture of membranes for ROM, skin / mucous membranes for Skin/MM, disorder for d/o, suicidal / homicidal ideation for the SI/HI pairing, and last oral intake for LOI in this section). Behavioral "HI" alone now reads "homicidal ideation" ("SI" stands alone, unchanged); the glucometer over-range option ("BGL ___ [HI]") now reads "BGL ___ [High (over range)]". Four terms were canonicalized to one spelling throughout: LAMS/S-LAMS/NY S-LAMS → NYS-LAMS; lower-case standalone "hx" → "Hx" (PMHx/FHx untouched); "A+Ox"/"AOx" → "A&Ox"; "MOLST/DNR" → "DNR/MOLST"; NYP-Hudson Valley → NYP-HVHC. "II" (Mobitz type II, Level I/II trauma center) and "CMS"/"PMS" needed no change — already in full or already correct per the prior ruling. New §27a Abbreviations appendix added, listing ~25 abbreviations kept as-is with one-line expansions. No wording change beyond these substitutions; no version bump.
+
+**v0.11 — 2026-09-06.** Field Ledger review applied (first pass: shell, cardiac, active shooter, dispositions). 57 blanks removed, almost all intervention timestamps that already live in the emsCharts activity log; with them went three payload-only clauses (ACS suspected etiology, ACS IV fluids/bolus, lidocaine dose). One line removed: last menstrual period. Option lists tightened on 12 choices: "concerning for" → "unstable", "UNSTABLE" → "unstable", "focused" → "focused exam", "head-to-toe" → "head-to-toe exam", "repeated" → "unconverted"; dropped "refuses" (bare), "rate change", "Pt contact made", "warm zone established at ___". Seven fields changed control (free text ↔ pills/chips): card_acs_riskfactors, sh_lung_sounds, sh_pulse_status, sh_molst_detail, card_brady_tcp_confirm, card_narrow_irreg_drug, card_wide_stable_drug. "other…" escape toggled on 26 choices; 7 hints rewritten to Alex's wording. Worksheet-only: question-style labels on 20 fields (`q` property, narrative unaffected) and 22 pre-selected defaults. Version bump to v0.11: structural DOC change.
