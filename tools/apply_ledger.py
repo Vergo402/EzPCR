@@ -23,7 +23,7 @@ DOC_RE = re.compile(r'^(window\.__DOC__ = )(.*)(;\s*)$', re.M)
 SENTINEL = "\x02"
 
 CONNECTOR_TAIL_RE = re.compile(
-    r'(\s*)(?:at|for|by|with|to|of|on|in|per|from|x|→)\s*$',
+    r'(\s*)(?:at|for|by|with|to|of|on|in|per|from|until|x|→)\s*$',
     re.IGNORECASE)
 
 SANDWICH_LITERALS = {"/", ",", "and"}
@@ -296,7 +296,8 @@ def collect_removed_by_parent(tok, out):
                         collect_removed_by_parent(t, out)
 
 
-def apply_deletions(tokens, deleted_fields, deleted_choices, removed_by_parent, removed_groups):
+def apply_deletions(tokens, deleted_fields, deleted_choices, removed_by_parent, removed_groups,
+                     affected_opts=None):
     n = len(tokens)
     removed = [False] * n
     for i, tok in enumerate(tokens):
@@ -353,10 +354,15 @@ def apply_deletions(tokens, deleted_fields, deleted_choices, removed_by_parent, 
             new_opts = []
             for opt in tok["c"]:
                 if isinstance(opt, dict) and "parts" in opt:
+                    orig_field_ids = set()
+                    collect_field_ids(opt["parts"], orig_field_ids)
                     opt2 = dict(opt)
                     opt2["parts"] = apply_deletions(
                         opt["parts"], deleted_fields, deleted_choices,
-                        removed_by_parent, removed_groups)
+                        removed_by_parent, removed_groups, affected_opts)
+                    if affected_opts is not None and (
+                            orig_field_ids & (deleted_fields | deleted_choices)):
+                        affected_opts.append(opt2)
                     new_opts.append(opt2)
                 else:
                     new_opts.append(opt)
@@ -367,7 +373,7 @@ def apply_deletions(tokens, deleted_fields, deleted_choices, removed_by_parent, 
 
         if "g" in tok:
             inner = apply_deletions(tok["g"], deleted_fields, deleted_choices,
-                                     removed_by_parent, removed_groups)
+                                     removed_by_parent, removed_groups, affected_opts)
             has_nonliteral = any(isinstance(t, dict) for t in inner)
             if not has_nonliteral:
                 removed_groups.append(tok)
@@ -476,6 +482,27 @@ def clause_cleanup(arr):
     return merged, flags
 
 
+def strip_sentinel_deep(tokens):
+    """Rule B only cleans SENTINELs left in a line's own top-level parts
+    array. A deletion inside a choice option's nested `parts`, or inside a
+    `g` group, leaves its SENTINEL stranded there forever since
+    clause_cleanup never recurses into those. Walk the whole token tree
+    (options at any depth, groups at any depth) and strip/collapse those
+    too.
+    """
+    for i, tok in enumerate(tokens):
+        if isinstance(tok, str):
+            if SENTINEL in tok:
+                tokens[i] = collapse(tok.replace(SENTINEL, ""))
+        elif isinstance(tok, dict):
+            if "c" in tok:
+                for opt in tok["c"]:
+                    if isinstance(opt, dict) and "parts" in opt:
+                        strip_sentinel_deep(opt["parts"])
+            if "g" in tok:
+                strip_sentinel_deep(tok["g"])
+
+
 # ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
@@ -484,6 +511,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--decisions", default=".claude/preview/decisions.json")
     ap.add_argument("--src", default="PCR Narrative Builder v1.html")
+    ap.add_argument("--source-version", default=None,
+                    help="value to write into DOC.meta.source (default: leave unchanged)")
     args = ap.parse_args()
 
     decisions = json.loads(Path(args.decisions).read_text(encoding="utf-8"))
@@ -505,6 +534,7 @@ def main():
         "deleted_fields": 0, "deleted_choices": 0, "skipped_deletes": 0,
         "labels": 0, "controls": 0, "options": 0, "other": 0, "hint": 0,
         "preselect": 0, "field_order": 0, "carry_removed": 0, "skipped": 0,
+        "option_labels": 0,
     }
 
     def note(msg):
@@ -543,14 +573,26 @@ def main():
         before = render_line(line)
         removed_by_parent = set()
         removed_groups = []
+        affected_opts = []
         line_flags = []
         for name, arr in parts_arrays(line):
-            new_arr = apply_deletions(arr, dfields, dchoices, removed_by_parent, removed_groups)
+            new_arr = apply_deletions(arr, dfields, dchoices, removed_by_parent, removed_groups,
+                                       affected_opts)
             new_arr, arr_flags = clause_cleanup(new_arr)
             for f in arr_flags:
                 if f not in line_flags:
                     line_flags.append(f)
             arr[:] = new_arr
+            strip_sentinel_deep(arr)
+        for opt in affected_opts:
+            new_label = collapse(re.sub(r'\s*\{[^}]*\}', '', render_parts(opt["parts"]))).strip()
+            if new_label:
+                opt["label"] = new_label
+                counts["option_labels"] += 1
+            else:
+                line_flags.append("needs-review")
+                note(f"- SKIP relabel on option in `{line_id}`: cleaned parts render empty, "
+                     f"keeping stale label `{opt.get('label')}`")
         after = render_line(line)
         changed_line_ids.add(line_id)
         counts["deleted_fields"] += len(dfields)
@@ -567,6 +609,8 @@ def main():
             notes.append("removed-by-parent: " + ", ".join(sorted(removed_by_parent)))
         if removed_groups:
             notes.append(f"{len(removed_groups)} empty group(s) removed")
+        if affected_opts:
+            notes.append(f"{len(affected_opts)} option label(s) regenerated")
 
         has_field = False
         for _n, arr in parts_arrays(line):
@@ -975,8 +1019,20 @@ def main():
                 counts["carry_removed"] += 1
                 note(f"- removed stale carry entry on `{line['id']}`: `{key}` -> `{val}`")
 
+    for bid, block in doc["blocks"].items():
+        carry = (block.get("handoff") or {}).get("carry")
+        if not carry:
+            continue
+        for key in list(carry.keys()):
+            val = carry[key]
+            if key not in all_field_ids_now or val not in all_field_ids_now:
+                del carry[key]
+                counts["carry_removed"] += 1
+                note(f"- removed stale carry entry on `{bid}.handoff`: `{key}` -> `{val}`")
+
     # -- 12. version marker -------------------------------------------------
-    doc["meta"]["source"] = "v0.11"
+    if args.source_version:
+        doc["meta"]["source"] = args.source_version
 
     # -- held/unreviewed --------------------------------------------------
     for rec in decisions.get("heldUnreviewed", []):
@@ -986,7 +1042,7 @@ def main():
     doc_json = json.dumps(doc, ensure_ascii=False, separators=(",", ":"))
     reparsed = json.loads(doc_json)
     assert reparsed == doc
-    assert SENTINEL not in doc_json, "sentinel leaked into DOC JSON"
+    assert SENTINEL not in doc_json and "\\u0002" not in doc_json, "sentinel leaked into DOC JSON"
 
     all_deleted_ids = set()
     for s in per_line_deleted_fields.values():
@@ -1020,12 +1076,13 @@ def main():
     flagged_lines = [c["lineId"] for c in md_changes if c.get("flags")]
 
     report_header = [
-        "# Ledger apply report (v0.11)",
+        f"# Ledger apply report ({doc['meta']['source']})",
         "",
         f"Deleted fields: {counts['deleted_fields']}  ",
         f"Deleted choices: {counts['deleted_choices']}  ",
         f"Removed-by-parent fields: {len(removed_by_parent_all)}  ",
         f"Empty groups removed: {len(removed_groups_all)}  ",
+        f"Option labels regenerated: {counts['option_labels']}  ",
         f"Labels changed: {counts['labels']}  ",
         f"Controls changed: {counts['controls']}  ",
         f"Options changed: {counts['options']}  ",
