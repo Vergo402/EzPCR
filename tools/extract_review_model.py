@@ -18,7 +18,8 @@ def fix_literal(s):
 
 def derive_label(field_id, line_id):
     """Strip the line's domain prefix (first '_' token) from field_id, then
-    turn underscores into spaces. e.g. neur_gcs_e under line neur_gcs -> 'gcs e'."""
+    turn underscores into spaces. e.g. neur_gcs_e under line neur_gcs -> 'gcs e'.
+    This mirrors the worksheet's row label; the DOC hint is kept separately."""
     prefix = line_id.split("_", 1)[0] + "_"
     stripped = field_id[len(prefix):] if field_id.startswith(prefix) else field_id
     return stripped.replace("_", " ")
@@ -53,7 +54,7 @@ def parse_parts(parts, line_id, fields_out, depth=1):
             entry = {
                 "id": fid,
                 "type": "text",
-                "label": part.get("hint") or derive_label(fid, line_id),
+                "label": derive_label(fid, line_id),
                 "req": part.get("req", False),
             }
             if part.get("hint"):
@@ -93,7 +94,7 @@ def parse_parts(parts, line_id, fields_out, depth=1):
             entry = {
                 "id": fid,
                 "type": ftype,
-                "label": part.get("hint") or derive_label(fid, line_id),
+                "label": derive_label(fid, line_id),
                 "options": options,
                 "req": part.get("req", False),
             }
