@@ -121,7 +121,7 @@ O2 via [NC / NRB / BVM] ___ LPM, SpO2 ___ to ___.
 Albuterol 2.5 mg / ipratropium 0.5 mg neb, repeated, ___ {max 3 albuterol on standing order}, L/S ___ to ___, RR ___ to ___ / withheld: ___.
 Dexamethasone 10 mg [IV / IM / PO] / withheld: ___.
 Mag 2 g in 100 mL NS IV over 10 min for asthma not responding to above / withheld: ___. {COPD: med control only, cite.}
-Epi 0.3 mg (1 mg/mL) IM for severe distress / withheld: ___.
+Epi 0.3 mg (1 mg/mL) IM x___ for severe distress / withheld: ___.
 CPAP ___ cmH2O {5-10}, tolerated [well / ___], SpO2 ___ to ___ / withheld: ___ {AMS, vomiting, SBP, unable to protect airway}.
 
 *CHF / pulmonary edema:*
@@ -312,7 +312,7 @@ Escalates to: Respiratory Arrest template. Respiratory block for isolated bronch
 
 Exposure: ___ {allergen, route, time}. Prior anaphylaxis Hx [Y, to ___ / N]. Epi auto-injector [used prior to arrival at ___ / prescribed, not used / none].
 Presentation: [rash/hives ___ distribution / itching / facial or oral edema ___ / stridor / wheezing / resp distress / hypotension SBP ___ / GI sx: N/V, abd pain, diarrhea / ___]. [ANAPHYLAXIS: severe resp distress, facial/oral edema, or hypoperfusion, OR Hx of anaphylaxis + exposure + (resp distress / hypoperfusion / rash) / allergic reaction, systemic criteria not met].
-Epi 0.3 mg (1 mg/mL) IM, response: ___ / withheld: ___ {criteria not met}.
+Epi 0.3 mg (1 mg/mL) IM x___, response: ___ / withheld: ___ {criteria not met}.
 Albuterol 2.5 mg / ipratropium 0.5 mg neb for wheezing, x___ / withheld: ___.
 IV ___g ___. NS 500 mL bolus for SBP <100 / MAP <65, reassessed ___, repeated ___ {to 2 L, L/S clear} / none.
 Diphenhydramine 50 mg [IV / IM] / withheld: ___. Dexamethasone 10 mg [PO / IM / IV] / withheld: ___.
@@ -449,7 +449,7 @@ CPR per AHA: 100-120/min, rotated q2 min, interruptions minimized, mechanical CP
 Defibrillation: ___ J {each shock}. [Vector change to anterior/posterior for refractory VF/VT / n/a].
 Airway: [OPA/NPA + BVM with O2 / iGel ___ / ETT ___, ___ attempts, depth ___ cm], placement confirmed by waveform capnography, ETCO2 ___. After advanced airway: continuous compressions, 8-10 breaths/min.
 Access: [IV ___g ___ / IO ___]. BGL ___.
-Epi 1 mg (0.1 mg/mL) IV/IO.
+Epi 1 mg (0.1 mg/mL) IV/IO x___ {q3-5 min, max 5}.
 {Shockable:} [Amiodarone 300 mg IV / Lidocaine ___ mg IV {1.5 mg/kg}, repeat ___ mg {0.75 mg/kg}]. {Torsades/hypomag:} Mag 2 g IV.
 {PEA/asystole:} NS 500 mL bolus. {Suspected hyperkalemia (dialysis, Hx):} Sodium bicarb 50 mEq IV, calcium chloride 1 g IV, ≥50 mL NS flushed between.
 Reversible causes addressed: ___ {H's & T's actually searched: BGL ___, volume ___, hypoxia ___, tension pneumo [decompressed ___ / not suspected], tox ___, hyperK ___}.
@@ -632,4 +632,4 @@ Abbreviations kept in the standard's emitted text, for a reader without EMS back
 
 **v0.11 — 2026-09-06.** Field Ledger review applied (first pass: shell, cardiac, active shooter, dispositions). 57 blanks removed, almost all intervention timestamps that already live in the emsCharts activity log; with them went three payload-only clauses (ACS suspected etiology, ACS IV fluids/bolus, lidocaine dose). One line removed: last menstrual period. Option lists tightened on 12 choices: "concerning for" → "unstable", "UNSTABLE" → "unstable", "focused" → "focused exam", "head-to-toe" → "head-to-toe exam", "repeated" → "unconverted"; dropped "refuses" (bare), "rate change", "Pt contact made", "warm zone established at ___". Seven fields changed control (free text ↔ pills/chips): card_acs_riskfactors, sh_lung_sounds, sh_pulse_status, sh_molst_detail, card_brady_tcp_confirm, card_narrow_irreg_drug, card_wide_stable_drug. "other…" escape toggled on 26 choices; 7 hints rewritten to Alex's wording. Worksheet-only: question-style labels on 20 fields (`q` property, narrative unaffected) and 22 pre-selected defaults. Version bump to v0.11: structural DOC change.
 
-**v0.12 — 2026-09-06.** Clock-time inputs removed across every remaining category and template: 259 blanks deleted (ids ending `_time`, `_t1`–`_t5`, `_time_val`, and the unmasked epi/defib/ROSC/STEMI-identified/call-time stamps), all timestamps of EMS actions or observations that already live in the emsCharts activity log. Kept: history facts reported by others (last known well, symptom onset, time of injury, exposure time, witnessed-arrest time, "found at," "last seen at baseline," pre-EMS epi-pen/antipyretic use) and durations/intervals (q___ min, ___ min apart, downtime, submersion minutes, LOC minutes, APGAR 1/5). Sentences tidied by dropping the "at ___" phrase; a line whose only blank was the time stays as a fixed sentence (e.g. "ASA 324 mg chewed administered."). Seven lines hand-repaired after the automated pass: ca_tor_medcontrol, sh_medcontrol_line, ob_pph, ob_delivery, doa_found, brn_dressings, brn_eye. 67 option labels regenerated across 47 lines; 6 stale carry entries removed. Builder: HHMM mask and soft clock validation removed. Version bump to v0.12: structural DOC change.
+**v0.12 — 2026-09-06.** Clock-time inputs removed across every remaining category and template: 259 blanks deleted (ids ending `_time`, `_t1`–`_t5`, `_time_val`, and the unmasked epi/defib/ROSC/STEMI-identified/call-time stamps), all timestamps of EMS actions or observations that already live in the emsCharts activity log. Kept: history facts reported by others (last known well, symptom onset, time of injury, exposure time, witnessed-arrest time, "found at," "last seen at baseline," pre-EMS epi-pen/antipyretic use) and durations/intervals (q___ min, ___ min apart, downtime, submersion minutes, LOC minutes, APGAR 1/5). Sentences tidied by dropping the "at ___" phrase; a line whose only blank was the time stays as a fixed sentence (e.g. "ASA 324 mg chewed administered."). Seven lines hand-repaired after the automated pass: ca_tor_medcontrol, sh_medcontrol_line, ob_pph, ob_delivery, doa_found, brn_dressings, brn_eye. 67 option labels regenerated across 47 lines; 6 stale carry entries removed. Builder: HHMM mask and soft clock validation removed. Dose-count blanks added where the removed timestamps carried the count: ca_epi_count, alg_epi_count, resp_ra_epi_count (x___, no default). Version bump to v0.12: structural DOC change.
