@@ -90,6 +90,7 @@ def main():
         "abd_iv_gauge", "abd_iv_site",
         "alg_iv_gauge", "alg_iv_site",
         "brn_iv_gauge", "brn_iv_site", "brn_iv_lines",
+        "brn_12l_result",
         "neur_iv_gauge", "neur_iv_site",
         "card_dys_12l_confirms",
         "card_acs_esc_criteria", "card_acs_esc_calledto",
@@ -253,6 +254,7 @@ def main():
     assert render_parts(line["parts"]) == "IV ___g ___, NS ___ mL, reassessed ___."
     ns_ml, reassessed = line["parts"][5], line["parts"][7]
     assert ns_ml["f"] == "met_dka_ns_ml" and reassessed["f"] == "met_dka_reassessed"
+    line["label"] = "NS / reassessed"
     line["parts"] = [collapse("NS "), ns_ml, " mL, reassessed ", reassessed, "."]
     note("\n## met_dka_iv -> " + render_parts(line["parts"]))
 
@@ -264,6 +266,7 @@ def main():
     ns_vol, ns_indication, reassess_choice = line["parts"][5], line["parts"][7], line["parts"][9]
     assert ns_vol["f"] == "abd_ns_vol" and ns_indication["f"] == "abd_ns_indication"
     assert reassess_choice.get("id") == "abd_ns_reassess_choice"
+    line["label"] = "NS bolus"
     line["parts"] = [collapse("NS "), ns_vol, " mL for ", ns_indication, ", ",
                      reassess_choice, "."]
     note("\n## abd_iv -> " + render_parts(line["parts"]))
@@ -277,6 +280,7 @@ def main():
     reassess_field, repeat_choice = line["parts"][5], line["parts"][7]
     assert reassess_field["f"] == "alg_ns_reassess"
     assert repeat_choice.get("id") == "alg_ns_repeat_choice"
+    line["label"] = "NS bolus"
     line["parts"] = [collapse("NS 500 mL bolus for SBP <100 / MAP <65, reassessed "),
                      reassess_field, ", ", repeat_choice, "."]
     note("\n## alg_iv -> " + render_parts(line["parts"]))
@@ -296,9 +300,23 @@ def main():
     ), render_parts(line["parts"])
     ns_reassess, hypo_prev = line["parts"][7], line["parts"][9]
     assert ns_reassess["f"] == "brn_ns_reassess" and hypo_prev["f"] == "brn_hypothermia_prevention"
+    line["label"] = "NS bolus, hypothermia prevention"
     line["parts"] = [collapse("NS 500 mL bolus, reassessed "), ns_reassess,
                      ". Hypothermia prevention ", hypo_prev, "."]
     note("\n## brn_iv -> " + render_parts(line["parts"]))
+
+    # -- brn_electrical: drop the trailing 12-lead clause, relabel --------
+    # The electrical burn's 12-lead is the initial 12-lead: the shell sentence
+    # states it now. The monitor rhythm stays (Alex: 12-lead only in the shell).
+    line = line_index["brn_electrical"]
+    assert hint_stripped(render_parts(line["parts"])).endswith(
+        ". Monitor: ___. 12-lead: ___."), render_parts(line["parts"])
+    assert line["parts"][-5] == ". Monitor: " and line["parts"][-4]["f"] == "brn_monitor_rhythm"
+    assert line["parts"][-3] == ". 12-lead: " and line["parts"][-2]["f"] == "brn_12l_result"
+    assert line["parts"][-1] == "."
+    line["label"] = "Electrical entry/exit, monitor"
+    line["parts"] = line["parts"][:-3] + ["."]
+    note("\n## brn_electrical -> " + hint_stripped(render_parts(line["parts"])))
 
     # -- neur_iv_reassess: drop IV gauge/site, relabel -------------------
     line = line_index["neur_iv_reassess"]
