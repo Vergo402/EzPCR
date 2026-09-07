@@ -21,7 +21,7 @@ keyboard-driven worksheet for paste into emsCharts. `index.html` only redirects 
 - ES5-style JS matching the file; keep everything in the single HTML file.
 
 ## Engine map (names, not line numbers)
-- Assembly: `assemble` (dry pass for twin suppression) → `assembleOnce` → `renderSection`
+- Assembly: `assemble` (claim pass: `claimRows` → `twinSuppression`, shell members first, then by position) → `assembleOnce` → `renderSection`
   → `renderLine` (gates: `lineEligible`, `lineHidden`, twin `ctx.suppressed`,
   `lineAccepted`) → `renderParts` / `renderFill` / `renderChoice` / `renderSum` /
   `renderAox`. `paragraphs()` buckets rows by `paraOrder(ctx)` (tokens `p1..p4` and
