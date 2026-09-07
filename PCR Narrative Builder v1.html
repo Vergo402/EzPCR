@@ -290,13 +290,17 @@ body.ws-dragging { user-select: none; -webkit-user-select: none; }
   background: transparent; border: 1px dashed var(--border); border-radius: 999px;
 }
 .ws-hidden-chip:hover { color: var(--ink); border-color: var(--border-strong); }
-/* A twin already stated earlier reads as faded material; its handle and its × sit
-   outside the body and stay at full strength — the sentence is dimmed, not disabled.
-   The chip rides INSIDE the body, and opacity is not something a child can climb back
-   out of, so it compensates with full-strength ink instead: it is the way out. */
-.ws-line.ws-suppressed > .ws-line-body { opacity: .55; }
-.ws-line.ws-suppressed .ws-twin-chip { color: var(--ink); border-color: var(--border-strong); }
+/* A twin already stated earlier is GONE from its box, not dimmed inside it — a row the
+   assembler is ignoring must not be there to type into. What is left behind is one
+   footer per winner box, naming it once and offering each skipped sentence back as a
+   pill; the pills are the ordinary chip, so they read as the same kind of way-out as
+   "+ N hidden" does. */
+.ws-twin-foot {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  padding: 5px 8px; font-size: 12px; color: var(--text-faint);
+}
 .ws-twin-chip { margin-left: 6px; }
+.ws-twin-foot > .ws-twin-chip { margin-left: 0; }
 .ws-hidden-pop {
   position: absolute; top: 26px; right: 0; z-index: 50; background: var(--sheet);
   border: 1px solid var(--border); border-radius: var(--radius);
@@ -1837,6 +1841,10 @@ function fieldTail(fieldId, lineId, hint) {
 
 /**
  * Render one Line into zero or more output lines.
+ *
+ * Under `ctx.claimPass` this same walk answers a different question — WHICH lines
+ * are on the chart, not what they say — by returning a bare {lineId} for every line
+ * that gets past eligibility and deletion, and nothing else. See claimRows().
  * @returns {Array<{lineId:string, raw:string, withheld:boolean}>}
  */
 function renderLine(line, ctx, sectionId, sectionName, missing) {
@@ -1846,8 +1854,20 @@ function renderLine(line, ctx, sectionId, sectionName, missing) {
     if (rows.length) missing.push.apply(missing, c.missing);
     return rows;
   };
-  if (!lineEligible(line, ctx)) return [];
   if (lineHidden(line.id, ctx.d)) return [];
+  const eligible = lineEligible(line, ctx);
+  // CLAIM PASS: every undeleted line is reported, a fork through its chosen arms, and
+  // the row says whether the line CLAIMS its twin group. A line a stacked box owns
+  // claims by position alone — typed or not, required or `opt` — because the box was
+  // chosen to tell that part of the story; a shell line claims only once it is
+  // eligible (required, or an `opt`/`cond` row the medic has used), so the shell's
+  // always-present optional rows never pre-empt a template's own sentence. The gate
+  // sits ABOVE lineAccepted on purpose: a sentence claims the moment its box is stacked.
+  if (ctx.claimPass && line.kind !== "fork") {
+    const rec = LINE_INDEX[line.id];
+    return [{ lineId: line.id, claims: eligible || !rec || rec.ownerType !== "shell" }];
+  }
+  if (!eligible) return [];
   // A twin already stated earlier in the narrative emits nothing AND asks nothing —
   // the gate sits above the tri/esc branches, whose open items go straight to the
   // outer `missing` and would otherwise leak past it.
@@ -2031,24 +2051,19 @@ function assembleOnce(ctx) {
 }
 
 /**
- * THE assembler. Twin dedupe needs to know, before any open item is committed, which
- * sentence of a twin group PRINTS first — and print order is not assembly order once
- * the medic has dragged something. So the traversal runs twice: a dry pass to learn
- * what would emit and in what order, then the real one with the losers gated out.
- * The second pass is skipped entirely when nothing is suppressed, which is what keeps
- * a chart with no stacked twins byte-identical to the one-pass narrative.
+ * THE assembler. Twin dedupe has to be settled BEFORE any sentence is built, because a
+ * suppressed line must emit nothing and ask nothing — so the traversal runs twice: a
+ * CLAIM PASS that only asks which lines are on the chart and in what order, then the
+ * one real pass with the losers gated out. The claim pass builds no text and commits no
+ * open item, so the narrative is still the product of a single assembleOnce() and stays
+ * byte-identical to the one-pass output when nothing is suppressed (ctx.suppressed is
+ * then an empty object, which gates nothing).
  * @param {Object} ctx @returns {Object} the assembly, plus `suppressed` / `twinShown`
  */
 function assemble(ctx) {
-  ctx.suppressed = null;
-  const dry = assembleOnce(ctx);
-  const twins = twinSuppression(dry, ctx);
-  let asm = dry;
-  if (Object.keys(twins.skip).length) {
-    ctx.suppressed = twins.skip;
-    asm = assembleOnce(ctx);
-  }
+  const twins = twinSuppression(ctx);
   ctx.suppressed = twins.skip;
+  const asm = assembleOnce(ctx);
   asm.suppressed = twins.skip;
   asm.twinShown = twins.shown;
   noteDuplicates(asm);
@@ -2056,11 +2071,51 @@ function assemble(ctx) {
 }
 
 /**
- * Which twin sentences lose. Rows are put in ORDINAL order — the same ordinal-then-
- * assembly-order sort paragraphs() makes WITHIN a bucket, so a dragged block counts as
- * earlier when it reads earlier — and the first EMITTING line of each group keeps the
- * group. A line that emitted nothing produced no row and so never claims anything.
+ * Every line ON THE CHART right now, in the order the narrative reads them. Runs the
+ * one authoritative traversal — assembleOnce, so shell sections minus the collapsed and
+ * DOA-N/A ones, the slot's boxes at the anchor, then the disposition, recursing into a
+ * fork's CHOSEN arms exactly as renderLine does — with `claimPass` on, which stops each
+ * line short of building any text. Nothing it produces is kept but the ids.
+ * @param {Object} ctx @returns {Array<{lineId:string}>} in traversal order
+ */
+function claimRows(ctx) {
+  const wasSuppressed = ctx.suppressed;
+  ctx.suppressed = null;
+  ctx.claimPass = true;
+  const walk = assembleOnce(ctx);
+  ctx.claimPass = false;
+  ctx.suppressed = wasSuppressed;
+  const rows = [];
+  (walk.sections || []).forEach(function (s) {
+    s.lines.forEach(function (l) { rows.push(l); });
+  });
+  return rows;
+}
+
+/**
+ * Which twin sentences lose. A group is claimed BY POSITION, not by emission: the first
+ * member in reading order that is ON THE CHART keeps the group from the moment it is
+ * there, and every later member is skipped whether or not anything has been typed into
+ * either of them. That is what stops two stacked boxes from both offering to state the
+ * same fact and leaving the medic to discover the collision by filling in both.
  *
+ * "On the chart" is claimRows()' test — every undeleted line the assembler would walk,
+ * read BEFORE lineAccepted — and each row says whether it CLAIMS:
+ *   · a line a stacked BOX owns claims the instant its box is stacked, typed or not,
+ *     required or `opt`: the box was chosen to tell that part of the story, so a later
+ *     box never offers the same sentence again, not even as a folded "+ add" row;
+ *   · a SHELL line claims only once it is eligible (required, or an `opt`/`cond` row
+ *     the medic has used): the shell's optional rows are placeholders on every chart,
+ *     and an unused one must not pre-empt a template's own sentence (an arrest's
+ *     access line stays live until the medic writes the IV into the shell row).
+ * A row whose group is already claimed is suppressed whether or not it claims, so a
+ * folded optional copy in a later box goes to the footer like any other twin.
+ * Deleting the winner (lineHidden) takes it off the chart, so the group falls through
+ * to the next member — the loser un-suppresses on its own rather than stranding the
+ * fact with nothing to state it.
+ *
+ * Rows are put in ORDINAL order — the same ordinal-then-walk-order sort paragraphs()
+ * makes WITHIN a bucket, so a dragged block counts as earlier when it reads earlier.
  * Ordinal order is print order inside one paragraph, not across them: paragraphs are
  * dealt by token (see paraOrder), and a bucket can print ahead of a unit with a smaller
  * ordinal. It cannot bite today — every twin group's members are block- or
@@ -2070,25 +2125,26 @@ function assemble(ctx) {
  * should be the sentence whose PLACE in the chart the medic arranged, and the loser
  * cites its winner by box name, which stays true either way.
  *
- * Fork arms take part on their own: a sub-line's row carries its own lineId, and its
- * ordinal comes from the fork it rides in (FORK_PARENT), which is the unit that moves.
- * @param {Object} asm the dry assembly @param {Object} ctx
+ * Fork arms take part on their own: a sub-line is walked only when its arm is picked,
+ * its row carries its own lineId, and its ordinal comes from the fork it rides in
+ * (FORK_PARENT), which is the unit that moves.
+ * @param {Object} ctx
  * @returns {{skip:Object, shown:Object}} lineId -> {by, byOwner}; `shown` holds the
  *   ones that would have been skipped but for the medic's own show-anyway.
  */
-function twinSuppression(asm, ctx) {
+function twinSuppression(ctx) {
   const anyway = ctx.d.showAnyway || {};
   const index = globalUnitIndex(ctx);
   const rows = [];
   let carried = -1;
-  (asm.sections || []).forEach(function (s) {
-    s.lines.forEach(function (l) {
-      const at = index.get("line:" + (FORK_PARENT[l.lineId] || l.lineId));
-      if (at != null) carried = at;
-      rows.push({ lineId: l.lineId, sort: at != null ? at : carried, seq: rows.length });
-    });
+  claimRows(ctx).forEach(function (l) {
+    const at = index.get("line:" + (FORK_PARENT[l.lineId] || l.lineId));
+    if (at != null) carried = at;
+    const rec = LINE_INDEX[l.lineId];
+    rows.push({ lineId: l.lineId, sort: at != null ? at : carried, seq: rows.length,
+                shell: (rec && rec.ownerType === "shell") ? 0 : 1, claims: l.claims !== false });
   });
-  rows.sort(function (a, b) { return (a.sort - b.sort) || (a.seq - b.seq); });
+  rows.sort(function (a, b) { return (a.shell - b.shell) || (a.sort - b.sort) || (a.seq - b.seq); });
 
   const winner = Object.create(null);
   const skip = Object.create(null);
@@ -2096,7 +2152,7 @@ function twinSuppression(asm, ctx) {
   rows.forEach(function (r) {
     const g = TWIN_OF[r.lineId];
     if (!g) return;
-    if (!winner[g]) { winner[g] = r.lineId; return; }
+    if (!winner[g]) { if (r.claims) winner[g] = r.lineId; return; }
     if (winner[g] === r.lineId) return;            // one line, several rows
     const cite = { by: winner[g], byOwner: twinOwnerName(winner[g]) };
     if (anyway["line:" + r.lineId]) shown[r.lineId] = cite;
@@ -2536,36 +2592,93 @@ function renderUnit(host, unitKey, ctx, extraClass) {
   if (!rec) return;
   const body = unitWrap(host, unitKey, ctx, extraClass);
   lineRow(body, rec.line, ctx);
-  twinChip(body, rec.line.id, ctx);
+  twinChip(body, rec.line.id);
 }
 
+/** The twin losers of the assembly the worksheet is painting against. renderAll runs
+ *  the preview FIRST, so lastAsm is always the assembly this rebuild answers to. */
+function twinSkipped() { return (lastAsm && lastAsm.suppressed) || {}; }
+
 /**
- * A twin the assembler skipped is DIMMED on the worksheet, never removed: the medic
- * can still read and edit every field, and the chip says where the sentence was
- * already stated and offers to state it twice anyway. Pressing it again takes it back
- * out. Nothing here suppresses a row — that decision belongs to the assembler alone.
- * @param {Element} body the unit's .ws-line-body @param {string} lineId @param {Object} ctx
+ * The chip on a twin the medic asked to state TWICE anyway, attached directly to the
+ * ROW it belongs on. A fork sub-line's chip rides its OWN first row inside the fork's
+ * .ws-sub, not the fork unit's first row — which is why this takes the row itself
+ * rather than a unit's body (see lineRow); twinChip below is the ordinary case, a thin
+ * wrapper around this. That is now the only case a row can be here for: a twin the
+ * assembler skipped has left the box (or its arm) entirely — its way back is the box's
+ * twinFooter — so this chip only ever offers the way out again. Nothing here
+ * suppresses a row — that decision belongs to the assembler alone.
+ * @param {Element} [row] the row to attach the chip to, if one was rendered
+ * @param {string} lineId
  */
-function twinChip(body, lineId, ctx) {
-  const asm = lastAsm || {};
-  const cite = (asm.suppressed || {})[lineId] || (asm.twinShown || {})[lineId];
-  if (!cite) return;
-  const on = !!(ctx.d.showAnyway || {})["line:" + lineId];
-  const row = body.children[0];
+function twinChipOn(row, lineId) {
+  if (!((lastAsm && lastAsm.twinShown) || {})[lineId]) return;
   if (!row) return;
-  if (!on) body.parentNode.classList.add("ws-suppressed");
-  const chip = el("button", "ws-hidden-chip ws-twin-chip", on ? "shown twice · hide"
-    : "already stated in " + (cite.byOwner || "an earlier sentence") + " · show anyway");
+  const chip = el("button", "ws-hidden-chip ws-twin-chip", "shown twice · hide");
   chip.type = "button";
-  chip.title = on ? "state this once only" : "state this a second time anyway";
+  chip.title = "state this once only";
   chip.addEventListener("click", function (e) {
     e.stopPropagation();
     const d = draft();
-    const m = d.showAnyway || (d.showAnyway = {});
-    if (on) delete m["line:" + lineId]; else m["line:" + lineId] = true;
+    delete (d.showAnyway || (d.showAnyway = {}))["line:" + lineId];
     structuralEdit();
   });
   row.appendChild(chip);
+}
+/** The ordinary case: the chip belongs on the unit's own first row.
+ *  @param {Element} body the unit's .ws-line-body @param {string} lineId */
+function twinChip(body, lineId) {
+  twinChipOn(body.children[0], lineId);
+}
+
+/**
+ * The footer under a section that had twins taken out of it: one line per WINNER box,
+ * naming it once and then offering each skipped sentence back as a pill. A suppressed
+ * row is gone from the box — a medic cannot fill in a sentence the assembler is
+ * ignoring — so this is the only place it can be reached from, and pressing a pill
+ * sets show-anyway, which brings the row back with the chip's "hide" on it (twinChip
+ * for a box unit, twinChipOn directly for a fork sub-line — see lineRow).
+ *
+ * `match` is the same LINE_INDEX predicate hiddenChip takes, so a section asks about
+ * exactly the lines it OWNS. Like hiddenChip, that means a line dragged into a foreign
+ * box is offered back from its home box rather than from where it now sits — rare, and
+ * consistent with how restoring a deleted line already behaves.
+ *
+ * Fork option lines are included: lineRow now takes a suppressed sub-line OUT of its
+ * arm the way a box takes a suppressed line out of itself, so this is its way back too.
+ * An unpicked arm's lines never reach "on the chart" — claimRows() only walks CHOSEN
+ * arms — so this can never be asked to list a line that isn't.
+ * @param {Element} sec a sectionNode @param {function(Object):boolean} match
+ */
+function twinFooter(sec, match) {
+  const cites = twinSkipped();
+  const order = [];                                  // winner name -> {byOwner, ids}
+  const byWinner = Object.create(null);
+  Object.keys(cites).forEach(function (id) {
+    const rec = LINE_INDEX[id];
+    if (!rec || !match(rec)) return;
+    const name = cites[id].byOwner || "an earlier sentence";
+    if (!byWinner[name]) { byWinner[name] = { byOwner: name, ids: [] }; order.push(byWinner[name]); }
+    byWinner[name].ids.push(id);
+  });
+  order.forEach(function (g) {
+    const foot = el("div", "ws-twin-foot");
+    foot.appendChild(el("span", "ws-twin-foot-lead", "Already stated in " + g.byOwner + ":"));
+    g.ids.forEach(function (id) {
+      const line = LINE_INDEX[id].line;
+      const pill = el("button", "ws-hidden-chip ws-twin-chip", (line.label || id) + " · show");
+      pill.type = "button";
+      pill.title = "state this a second time anyway";
+      pill.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const d = draft();
+        (d.showAnyway || (d.showAnyway = {}))["line:" + id] = true;
+        structuralEdit();
+      });
+      foot.appendChild(pill);
+    });
+    sec._rows.appendChild(foot);
+  });
 }
 
 /**
@@ -2596,7 +2709,11 @@ function renderWorksheet() {
       if (o) ownerBox(ws, o, ctx);
     } else if (key.indexOf("line:") === 0) {
       const rec = LINE_INDEX[key.slice(5)];
-      if (rec && !lineHidden(rec.line.id, ctx.d)) renderUnit(ws, key, ctx, "ws-loose");
+      // A loose line has no box, so no footer either: its way back is the winner box's
+      // own footer, which cites it by the owner LINE_INDEX still records for it.
+      if (rec && !lineHidden(rec.line.id, ctx.d) && !twinSkipped()[rec.line.id]) {
+        renderUnit(ws, key, ctx, "ws-loose");
+      }
     }
   });
   ui.condSig = condSignature(ctx);
@@ -2642,10 +2759,12 @@ function shellSection(host, s, ctx) {
     if (d.naSections[s.id]) { sec.classList.add("ws-na"); sec._rows.inert = true; }
   }
   if (s.note) sec._rows.appendChild(el("div", "ws-note", s.note));
+  const skipped = twinSkipped();
   regionUnits("sec:" + s.id, ctx).forEach(function (key) {
     const rec = LINE_INDEX[key.slice(5)];
-    if (rec && !lineHidden(rec.line.id, ctx.d)) renderUnit(sec._rows, key, ctx);
+    if (rec && !lineHidden(rec.line.id, ctx.d) && !skipped[rec.line.id]) renderUnit(sec._rows, key, ctx);
   });
+  twinFooter(sec, function (rec) { return rec.ownerType === "shell" && rec.sectionId === s.id; });
 }
 
 /** lineId -> the sub-block that declares it, for one owner. Lets the box's line loop
@@ -2695,18 +2814,25 @@ function ownerBox(host, ownerRec, ctx) {
   // consecutive lines from the same one; owner.lines and any foreign line dragged
   // in here have no sub-block, so they never open one (matches the old fixed walk).
   const sbOf = subBlockMap(owner);
+  const skipped = twinSkipped();
   let prevSb;
   regionUnits(unitKey, ctx).forEach(function (key) {
     const id = key.slice(5);
     const rec = LINE_INDEX[id];
     if (!rec) return;
     if (lineHidden(id, ctx.d)) return;
+    // A twin already stated in an earlier box leaves this one entirely — twinFooter
+    // below is where it can be asked for back.
+    if (skipped[id]) return;
     const sb = sbOf[id] || null;
     if (sb !== prevSb) {
       if (sb) sec._rows.appendChild(el("div", "ws-subhead", sb.name));
       prevSb = sb;
     }
     renderUnit(sec._rows, key, ctx);
+  });
+  twinFooter(sec, function (rec) {
+    return rec.ownerId === owner.id && (rec.ownerType === "block" || rec.ownerType === "template");
   });
   if (owner.handoff) maybeHandoffButton(sec._rows, owner, ctx);
 }
@@ -2715,10 +2841,12 @@ function dispositionSection(host, ctx) {
   const sec = sectionNode(host, "disposition", "Disposition");
   hiddenChip(sec, function (rec) { return rec.ownerType === "disposition"; });
   lineRow(sec._rows, DISPO_LINE, ctx);
+  const skipped = twinSkipped();
   regionUnits("sec:disposition", ctx).forEach(function (key) {
     const rec = LINE_INDEX[key.slice(5)];
-    if (rec && !lineHidden(rec.line.id, ctx.d)) renderUnit(sec._rows, key, ctx);
+    if (rec && !lineHidden(rec.line.id, ctx.d) && !skipped[rec.line.id]) renderUnit(sec._rows, key, ctx);
   });
+  twinFooter(sec, function (rec) { return rec.ownerType === "disposition"; });
 }
 
 /* ---- rows and fields ---- */
@@ -2765,10 +2893,19 @@ function lineRow(host, line, ctx) {
   });
   if (line.kind === "fork") {
     const sub = el("div", "ws-sub");
+    const skipped = twinSkipped();
     forkSel(line.id).forEach(function (lab) {
       const o = (line.options || []).find(function (x) { return x.label === lab; });
       if (!o) return;
-      (o.lines || []).forEach(function (s) { if (!lineHidden(s.id, ctx.d)) lineRow(sub, s, ctx); });
+      (o.lines || []).forEach(function (s) {
+        // A fork option line is a unit like any other for twin claiming: a suppressed
+        // sub-line leaves its arm entirely rather than sitting there unfillable, and
+        // its way back (twinFooter) attaches the chip to whichever row comes back.
+        if (lineHidden(s.id, ctx.d) || skipped[s.id]) return;
+        const before = sub.children.length;
+        lineRow(sub, s, ctx);
+        if (sub.children.length > before) twinChipOn(sub.children[before], s.id);
+      });
     });
     if (sub.children.length) host.appendChild(sub);
   }
