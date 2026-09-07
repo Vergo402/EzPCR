@@ -180,6 +180,15 @@ def main():
     assert list(group.keys()) == ["g"]
     rsided_field = group["g"][1]
     assert rsided_field["f"] == "card_acs_rsided_12l"
+    # rsided_field carried hint:"If inferior changes" from when it lived inside
+    # an unconditional line's {g} sub-clause - that hint was the only signal
+    # that this content was conditional. Now the whole LINE is opt:true with
+    # note "inferior changes only" carrying that signal instead, so the
+    # field's own hint is stale/redundant (worksheet-only; narrative
+    # unaffected either way). Drop it rather than leave duplicated guidance.
+    assert rsided_field.get("hint") == "If inferior changes"
+    rsided_field = dict(rsided_field)
+    del rsided_field["hint"]
     new_card_acs_12l = {
         "id": "card_acs_12l", "kind": "std", "label": "R-sided 12-lead",
         "opt": True, "note": "inferior changes only",
@@ -189,6 +198,8 @@ def main():
     line.update(new_card_acs_12l)
     note("\n## card_acs_12l restructured (R-sided only)")
     note("  before removal, findings field + acquired/transmitted literal + note dropped")
+    note("  also dropped the field's own now-redundant hint \"If inferior changes\" "
+         "(the line's opt/note already say that)")
 
     # -- whole-line deletions -------------------------------------------
     DELETE_WHOLE = set(DELETED_LINE_IDS)
