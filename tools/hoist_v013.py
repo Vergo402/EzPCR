@@ -31,8 +31,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from apply_ledger import (  # noqa: E402
-    collapse, render_token, render_parts, render_line,
-    build_indices, parts_arrays, collect_all_field_ids,
+    collapse, render_parts, render_line,
+    build_indices, collect_all_field_ids,
 )
 
 DOC_RE = re.compile(r'^(window\.__DOC__ = )(.*)(;\s*)$', re.M)
@@ -56,7 +56,7 @@ def main():
     assert m, "window.__DOC__ line not found"
     doc = json.loads(m.group(2))
 
-    line_index, container_of = build_indices(doc)
+    line_index, _ = build_indices(doc)
 
     # ------------------------------------------------------------------
     # Pre-edit grep check: every field/line id this script is about to
@@ -165,7 +165,7 @@ def main():
     note("  new order: " + ", ".join(l["id"] for l in sh_assessment["lines"]))
 
     # rebuild indices - shell lines list was replaced wholesale
-    line_index, container_of = build_indices(doc)
+    line_index, _ = build_indices(doc)
     line_index["sh_12lead_line"] = sh_12lead_line
     line_index["sh_iv_line"] = sh_iv_line
 
@@ -229,7 +229,7 @@ def main():
         note(f"  - deleted `{lid}`")
 
     # rebuild indices again - many lines lists were rewritten
-    line_index, container_of = build_indices(doc)
+    line_index, _ = build_indices(doc)
     line_index["sh_12lead_line"] = sh_12lead_line
     line_index["sh_iv_line"] = sh_iv_line
 
@@ -387,7 +387,7 @@ def main():
     note("  groups: " + ", ".join(g["id"] for g in new_twins))
 
     # rebuild indices once more before the integrity assertions below
-    line_index, container_of = build_indices(doc)
+    line_index, _ = build_indices(doc)
     line_index["sh_12lead_line"] = sh_12lead_line
     line_index["sh_iv_line"] = sh_iv_line
 
@@ -451,18 +451,13 @@ def main():
     # ==================================================================
     note("\n## Part 5: referential-integrity assertions")
 
-    final_line_index, final_container_of = build_indices(doc)
+    final_line_index, _ = build_indices(doc)
     final_line_index["sh_12lead_line"] = sh_12lead_line
     final_line_index["sh_iv_line"] = sh_iv_line
+    # sh_assessment["lines"] was spliced in place back in Part 1, so the two new
+    # shell lines are already reachable from doc itself - collect_all_field_ids
+    # picks them up with no extra bookkeeping needed here.
     all_field_ids = collect_all_field_ids(doc)
-    # collect_all_field_ids walks doc["blocks"]/shell/dispositions/templates via
-    # build_indices; the two new shell lines were spliced in directly above so
-    # they ARE part of doc already - recompute cleanly from doc itself.
-    all_field_ids = set()
-    from apply_ledger import collect_field_ids
-    for lid, line in final_line_index.items():
-        for _name, arr in parts_arrays(line):
-            collect_field_ids(arr, all_field_ids)
     note(f"  total field/choice ids collected from DOC: {len(all_field_ids)}")
 
     # DEFAULTS / DEFAULTS_FN keys, extracted from the just-written engine text
