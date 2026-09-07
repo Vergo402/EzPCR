@@ -1,4 +1,4 @@
-# PCR Narrative Standard, Draft v0.12
+# PCR Narrative Standard, Draft v0.13
 Cortlandt-Peekskill Regional Paramedic Services, emsCharts, NYS ALS Collaborative Protocols
 Author: A. Vergo. Status: working draft, aligned to NYS Collaborative Protocols v26.1 (eff. 9/1/26) and the National Field Triage Red/Yellow criteria. Shell, four dispositions, all 18 blocks, all 6 dedicated templates. Complete first full draft.
 
@@ -11,7 +11,7 @@ Conventions
 - Withheld treatments are written next to the drug they belong to, with the reason.
 - GCS appears only in the Neuro/AMS and Trauma blocks.
 - The finished narrative is a fixed shell of four paragraphs with the stacked material printed between the third and the fourth: (1) initial — dispatch, primary, mental status/CC/history; (2) vitals; (3) assessment — impression, secondary/exam; then **each block or template as its own paragraph, in the order they were stacked**; then (4) disposition — ongoing/transport and disposition. Sentences and whole blocks may still be rearranged, including into a different paragraph, to match the order things actually happened; the shell paragraphs and the block-per-paragraph rule are the frame.
-- A sentence that two stacked blocks both carry (analgesia withheld, 12-lead, IV access, GCS after an escalation) is written once. The first block in the chart states it; the builder hides the later block's copy unless the medic shows it. The twin groups are listed in the builder's DOC meta.
+- A sentence that two stacked blocks both carry (analgesia withheld, ASA, NTG, GCS after an escalation) is written once. The earliest place in the chart that carries it states it — the shell for a sentence hoisted there (12-lead, IV access), otherwise the first stacked block — and later copies leave the worksheet, listed at the foot of their box until the medic shows one. The twin groups are listed in the builder's DOC meta.
 - Scored fields (GCS, NYS-LAMS, burn % BSA) are entered as their components; the builder computes the total. In the sentence the total keeps the position the standard prints.
 
 ---
@@ -32,6 +32,8 @@ Pt PMHx ___. Meds [per list / noncompliant ___ / other…] {any that apply}. All
 
 **Assessment**
 Vitals as noted in emsCharts activity log, [stable / concerning for ___] {restate only the numbers that drive the DDx or a treatment}.
+{If a 12-lead was acquired:} 12-lead [acquired: ___ {rhythm, rate, axis, intervals, ST/T changes by lead, or "no acute changes"}, [transmitted / not transmitted] / not indicated: ___].
+{If access obtained:} [IV ___g ___ / IO ___] {any that apply}(, second access ___).
 Working impression ___. DDx ___.
 
 **[BLOCK SLOT]**
@@ -67,20 +69,18 @@ Escalates to: STEMI template (2a). Cardiac Arrest template if pulses lost (2b). 
 
 ### 2a. Cardiac / ACS
 Pt describes ___ {OPQRST}. Associated [none / SOB / diaphoresis / N/V / lightheadedness / syncope / palpitations / other…] {any that apply}. Cardiac risk factors [diabetes mellitus / FHx / HTN / hyperlipidemia / prior MI/CABG/stent / smoker / stimulant use / other…] {any that apply}.
-12-lead acquired: ___ {rhythm, rate, axis, intervals, ST/T changes by lead, or "no acute changes"}, transmitted. {If inferior changes: R-sided 12-lead ___. If STE: jump to escalation line.}
+{Inferior changes only:} R-sided 12-lead ___.
 ASA 324 mg chewed [administered / withheld: ___ {allergy, unable to chew, active GI bleed}]. {Took ASA before arrival but dose uncertain: give and say why.}
 NTG 0.4 mg SL [x___, ___ min apart, SBP ___ before each dose, pain ___ to ___/10 / withheld: ___ {SBP ≤120 or MAP ≤90, R-sided changes, phosphodiesterase-5 inhibitor within 48h}]. {SBP drops <100 after NTG: supine, NS 500 mL bolus, reassessed ___.}
-IV ___g ___.
 Fentanyl ___ mcg [IV / IM / IN] for pain ___/10 unrelieved by NTG, pain ___ to ___/10 / withheld: ___ {pain improved, pt declined, SBP, AMS}. {No ketorolac in suspected ACS.}
 {Symptomatic HTN only:} BP ___ with ___ {headache, vision change, CP, neuro deficit}. Neuro exam ___. No antihypertensive given.
 {Hypotension only:} SBP ___, ___ {skin, mental status, cap refill}. ___ mL NS bolus, reassessed SBP ___. {Pressor only w/ med control, cite in Medical control line.}
 {If performed:} Serial 12-lead: [unchanged / other…].
-**Escalation line:** STEMI criteria [not met on serial 12-leads / MET: ___ {leads, mm}, STEMI alert called to ___, 12-lead transmitted. Switch to STEMI template.]
+**Escalation line:** STEMI criteria [not met on serial 12-leads / MET on 12-lead. Switch to STEMI template.]
 
 ### 2b. Cardiac / Dysrhythmia
-Monitor: ___ {rhythm, rate, regularity, QRS width, P-wave relationship, block degree and type}. 12-lead confirms ___. {Print and attach the strip that shows the diagnosis.}
+Monitor: ___ {rhythm, rate, regularity, QRS width, P-wave relationship, block degree and type}. {Print and attach the strip that shows the diagnosis.}
 Pt [hemodynamically stable / UNSTABLE: ___ {which of: SBP <90, AMS, ischemic CP, acute CHF, syncope}]. Onset ___ {known time, or "unknown, >48h" for rate-control decisions}. Prior Hx of this rhythm [Y, ___ / N]. Anticoagulated [Y ___ / N].
-IV ___g ___.
 {If performed:} Pads applied [prophylactically / for pacing / for cardioversion].
 
 {Pick the fork that applies. Delete the rest.}
@@ -127,7 +127,6 @@ CPAP ___ cmH2O {5-10}, tolerated [well / ___], SpO2 ___ to ___ / withheld: ___ {
 *CHF / pulmonary edema:*
 CPAP ___ cmH2O {5-10}, tolerated [well / ___], SpO2 ___ to ___, RR ___ to ___ / withheld: ___ {SBP, AMS, vomiting, facial trauma}.
 NTG 0.4 mg SL [x1 / x2 / x3] per SBP ___ {SBP 120-160: 1 tab q5; 160-200: 2 tabs q5; >200: 3 tabs q5}, BP ___ to ___ / withheld: ___ {SBP <120, phosphodiesterase-5 inhibitor}.
-12-lead: ___ {rhythm, ischemic changes}. {If ACS suspected, add 2a.}
 
 *FBAO (Choking):*
 [Partial / complete] obstruction, pt [coughing effectively / unable to cough or speak / unresponsive] on arrival. Abdominal thrusts x___ by [bystander / crew]. Laryngoscopy, ___ {object seen or not}, removed with Magill forceps / not visualized. Airway [patent after removal / ___]. Post-event L/S ___, SpO2 ___.
@@ -169,7 +168,7 @@ Hypoglycemia [ruled out, BGL ___ / treated, see Metabolic block]. Opioid toxidro
 Headache: onset ___, [thunderclap / gradual], severity ___/10, [worst of life Y/N], with [visual change / neck stiffness / fever / neuro deficit / none]. BP ___.
 Dizziness: [vertigo (spinning) / lightheadedness / disequilibrium], [positional / constant], with [nystagmus / ataxia / dysmetria / diplopia / dysarthria / none] {any of these with a normal stroke screen still gets "posterior circulation not excluded" in DDx}.
 
-IV ___g ___. Treatments per fork above. Pt reassessed: GCS ___, NYS-LAMS [unchanged ___ / ___].
+Treatments per fork above. Pt reassessed: GCS ___, NYS-LAMS [unchanged ___ / ___].
 **Escalation line:** Stroke screen [negative on initial and reassessment, no focal deficit, LKW ___ / POSITIVE, NYS-LAMS ___/6, LKW ___ per ___, stroke alert called to ___. NYS-LAMS 0-3: NYS-designated stroke center ___. NYS-LAMS 4-6: exclusion criteria reviewed ___, routed to thrombectomy-capable center ___. SBP maintained >120 / SBP ___ >220, med control contacted. Switch to Stroke/CVA template.]
 
 ---
@@ -184,7 +183,7 @@ GCS ___ (E___ V___ M___), pupils ___. Pt [denies / reports] head, neck, or back 
 Hemorrhage control: [none required / direct pressure ___ / pressure dressing / hemostatic gauze packed ___, pressure held ___ min / tourniquet ___ 2-3 in proximal, time written on TQ, second TQ]. TQ conversion [not attempted / attempted: pressure dressing applied, windlass released, ___ {no rebleed, TQ left in place loose / rebleed, re-tightened}]. Estimated blood loss ___.
 Splinting: ___ {what, how, PMS before and after} / not indicated.
 Analgesia {one narcotic on standing order}: fentanyl ___ mcg [IV / IM / IN] / morphine ___ mg / ketamine [25 mg IV over 5 min / 50 mg IM] / acetaminophen 1000 mg PO / ketorolac 15 mg [IV / IM], pain ___/10 to ___/10 / withheld: ___ {pain controlled, SBP, AMS, pt declined}.
-IV ___g ___. Fluids [none / ___ mL NS for SBP ___, reassessed ___].
+Fluids [none / ___ mL NS for SBP ___, reassessed ___].
 Field triage criteria reviewed: RED [none / ___]. YELLOW [none / ___ {high-risk auto crash: ejection, intrusion >12 in occupant or >18 in any site, extrication, death in compartment, telemetry; rider separated with significant impact; ped/bike thrown or run over; fall >10 ft; EMS judgment: low-level fall ≥65 or ≤5 with head impact, anticoagulant use, pregnancy >20 wks, burns with trauma}].
 **Escalation line:** [No RED or YELLOW criteria, trauma alert not indicated, txp to ___ / YELLOW criteria only (___), txp to trauma center ___ / RED criterion MET: ___, switch to Trauma Major block.] {Discretionary: "Trauma alert called at provider discretion for ___."}
 
@@ -202,7 +201,7 @@ GCS ___ (E___ V___ M___), pupils ___. {Head injury: repeat GCS ___; any drop of 
 Massive hemorrhage: [none / ___ {site}, controlled with ___ {TQ, time written on TQ, wound packing, pressure dressing, junctional}, estimated blood loss ___].
 Airway: [patent, self-maintained / ___ {NPA, OPA, suction for ___, positioned}]. {Advanced airway: device, size, attempts, confirmation by ETCO2 ___ and ___, secured at ___ cm.}
 Respirations: L/S ___ bilaterally, chest [symmetric / ___ {paradoxical, crepitus, open wound}]. Occlusive dressing to ___. Needle decompression ___ side, ___ ICS ___ line, [rush of air / SBP ___ to ___] / not indicated: ___. SpO2 ___, ETCO2 ___.
-Circulation: radial pulse [present / absent], SBP ___, MAP ___, skin ___. IV/IO ___g ___, second access ___. NS 500 mL bolus for SBP <100 / MAP <65, reassessed SBP ___, L/S ___, repeated ___ {to 2 L max while L/S clear, goal SBP ≥100 / MAP ≥65}. TXA 2 g in 100 mL over 10 min for traumatic hemorrhage with SBP <100 / withheld: ___ {SBP ≥100}. Pelvic binder for ___ / not indicated.
+Circulation: radial pulse [present / absent], SBP ___, MAP ___, skin ___. NS 500 mL bolus for SBP <100 / MAP <65, reassessed SBP ___, L/S ___, repeated ___ {to 2 L max while L/S clear, goal SBP ≥100 / MAP ≥65}. TXA 2 g in 100 mL over 10 min for traumatic hemorrhage with SBP <100 / withheld: ___ {SBP ≥100}. Pelvic binder for ___ / not indicated.
 Head/spine: spinal motion restriction via ___. Pupils ___, [PEARL / unequal ___], posturing [none / decorticate / decerebrate]. Signs of basilar skull fx [none / fluid from L ear / fluid from R ear / halo sign / Battle sign / raccoon eyes] {any that apply; none is exclusive by convention}. Anticoagulated [Y ___ / N]. {Herniation signs: hyperventilation to ETCO2 ___, or say not indicated.}
 Hypothermia prevention: ___ {blankets, heat on, wet clothing removed}.
 Injuries found on exam: ___ {head to toe, by region, with side}. Distal PMS ___.
@@ -220,7 +219,6 @@ Escalates to: Respiratory Arrest or Cardiac Arrest template. Neuro block if AMS 
 
 Substance ___ {name, or "unknown"}, [ingested / injected / inhaled / dermal / ___], amount ___ {count, mL, bags}, time ___ {or "unknown, last seen normal ___"}, [intentional / accidental / recreational / unknown]. Co-ingestants [ETOH ___ / ___ / none reported]. Source of Hx [pt / bystander / pill bottles ___ {name, count remaining, fill date} / paraphernalia ___ / none]. {Bring the bottles.}
 Toxidrome: [opioid: pinpoint pupils, RR ___, ___ / sympathomimetic: ___ / anticholinergic: ___ / sedative: ___ / cholinergic: ___ / none identified]. GCS ___, pupils ___, RR ___, SpO2 ___, ETCO2 ___, BGL ___, temp ___, skin ___.
-12-lead: ___ {QRS width, QTc, rhythm; say the number for TCA/sodium-channel and QT-prolonging agents}.
 Airway [self-maintained / NPA / OPA / BVM for RR ___ or ETCO2 ___]. O2 ___.
 
 {Pick the fork that applies. Delete the rest.}
@@ -261,12 +259,12 @@ Oral glucose ___ g {15-30 g, able to swallow on command} / D10 ___ mL IV {up to 
 Pt [ate ___ after recovery / declined food]. Sulfonylurea or long-acting insulin on board [Y ___, recurrence risk explained / N]. {This line is what makes or breaks the RMA on a diabetic.}
 
 *Hyperglycemia / DKA:*
-BGL ___ [High (over range)]. Kussmaul respirations [Y / N], fruity odor [Y / N], polyuria/polydipsia ___ days, N/V ___, abd pain ___. Skin ___, mucous membranes ___. ETCO2 ___. 12-lead: ___ {peaked T's, rhythm}. Insulin compliance ___, [pump: ___ / new dx]. IV ___g ___, NS ___ mL, reassessed ___.
+BGL ___ [High (over range)]. Kussmaul respirations [Y / N], fruity odor [Y / N], polyuria/polydipsia ___ days, N/V ___, abd pain ___. Skin ___, mucous membranes ___. ETCO2 ___. Insulin compliance ___, [pump: ___ / new dx]. NS ___ mL, reassessed ___.
 
 *Sepsis:*
 Suspected source ___ {UTI, pneumonia, skin/wound, indwelling line/catheter, post-op, unknown}. Onset ___. Immunocompromised [Y ___ / N]. Facility/family reports ___.
 Sepsis screen: suspected infection [Y ___ / N] with [SBP <100 / AMS / neither]. Indicators: temp ___, HR ___, RR ___, ETCO2 ___, [fever, chills, diaphoresis, new cough, urinary sx, new AMS, flushed, pallor, rash, mottling]. [Meets septic shock criteria / suspected infection, criteria not met]. Skin ___, cap refill ___.
-Large-bore IV ___g ___, second access ___. NS 500 mL bolus for SBP <100 / MAP <65, reassessed SBP ___ to ___, MAP ___, L/S ___ {repeat to 2 L while clear, goal SBP >100 / MAP >65; stop and say so if rales develop}, repeated, ___. O2 NRB. Hospital notified of suspected septic shock / not indicated: ___.
+NS 500 mL bolus for SBP <100 / MAP <65, reassessed SBP ___ to ___, MAP ___, L/S ___ {repeat to 2 L while clear, goal SBP >100 / MAP >65; stop and say so if rales develop}, repeated, ___. O2 NRB. Hospital notified of suspected septic shock / not indicated: ___.
 Norepi started at ___ {2-20 mcg/min, after ≥1 L in, to MAP >65 / SBP >100} mcg/min, titrated to ___, MAP ___ to ___ / not indicated: ___.
 
 Pt reassessed: BGL ___ / SBP ___, MAP ___, GCS ___.
@@ -279,12 +277,12 @@ Categories: Abnormal Labs, General Illness/Malaise, Hypertension (a-symptomatic)
 This is the block for "nothing specific." Its whole job is to prove the specific things were screened for and were negative. Escalates to whichever block the screen turns up.
 
 Pt reports ___ {in their words: weak, tired, "not right," can't get up}, onset ___ {hours/days}, [gradual / sudden], [progressive / static]. Associated ___ {fever, chills, cough, dysuria, N/V/D, poor PO intake ___ days, falls, dizziness, CP, SOB, new meds, missed meds}. Last seen at baseline ___ per ___. Baseline function ___ {independent, walker, bed-bound}. Living situation ___ {alone, with family, facility}.
-Screens: BGL ___. Temp ___. Sepsis screen [negative / positive, see Metabolic block]. 12-lead [___ / not indicated: ___]. NYS-LAMS [0, no focal deficit / see Neuro block]. Orthostatics [___ / not obtained: ___]. Hydration: mucous membranes ___, skin turgor ___, urine output per pt ___.
+Screens: BGL ___. Temp ___. Sepsis screen [negative / positive, see Metabolic block]. NYS-LAMS [0, no focal deficit / see Neuro block]. Orthostatics [___ / not obtained: ___]. Hydration: mucous membranes ___, skin turgor ___, urine output per pt ___.
 {Fever/High Temp:} Temp ___, duration ___, [localizing sx ___ / none], sick contacts ___, antipyretics taken ___ at ___. Sepsis screen as above.
 {Asymptomatic HTN:} BP ___ x___ readings, pt denies headache, vision change, CP, SOB, neuro sx. Neuro exam grossly intact. Med compliance ___. No treatment indicated; pt advised private medical doctor follow-up within ___.
-{Abnormal labs:} Sent by ___ {private medical doctor, dialysis, facility} for ___ {lab, value, drawn ___}. Pt [symptomatic ___ / asymptomatic]. 12-lead: ___ {mandatory for K, Ca, Mg, dig}. Treatment ___ / none indicated in the field.
+{Abnormal labs:} Sent by ___ {private medical doctor, dialysis, facility} for ___ {lab, value, drawn ___}. Pt [symptomatic ___ / asymptomatic]. Treatment ___ / none indicated in the field.
 {Unable to ambulate:} [Weakness / pain ___ / mechanical: ___]. Injuries [none / see Trauma block]. Lift assist only [Y, pt assessed and at baseline / N]. Skin check [intact / ___] if down time >1h. Creatine kinase-relevant down time ___.
-IV ___g ___ / not indicated. Fluids ___ mL NS for ___ / none.
+Fluids ___ mL NS for ___ / none.
 Working impression ___ {"generalized weakness, etiology unclear, dehydration vs UTI vs ___"}.
 Pt reassessed: ___.
 **Escalation line:** Screens negative for hypoglycemia, sepsis, stroke, and acute cardiac cause; pt txp for ___ / [screen POSITIVE for ___, see ___ block].
@@ -298,8 +296,7 @@ Escalates to: Metabolic/Sepsis block if septic; Cardiac 2a if epigastric pain is
 Pain: ___ {OPQRST, location by quadrant, radiation to back/groin/shoulder, quality}. Associated [N/V ___ episodes / diarrhea / constipation, last BM ___ / fever / urinary sx / melena / hematemesis ___ {coffee-ground, bright red, volume} / hematochezia / none] {any that apply}. Last oral intake ___. {Female of childbearing age: last menstrual period ___, pregnancy [possible / denied].}
 Abd exam: [soft / rigid / guarded], [non-tender / tender ___ quadrant], [distended / non-distended], [rebound tenderness / none], [pulsatile mass / none]. {>50 with back/abd pain: bilateral femoral pulses ___, "AAA not excluded" in DDx if any asymmetry or hypotension.}
 {GI bleed:} Skin ___, orthostatics ___, anticoagulated [Y ___ / N], prior GI bleed [Y / N], ETOH Hx [Y / N]. Estimated blood loss per pt/scene ___.
-12-lead for epigastric/upper abd pain: ___ / not indicated: ___.
-IV ___g ___. NS ___ mL for ___, reassessed ___ / none.
+NS ___ mL for ___, reassessed ___ / none.
 Ondansetron ___ mg [ODT / IV / IM] for ___ / isopropyl pad self-inhalation / withheld: ___.
 Analgesia: fentanyl ___ mcg, pain ___ to ___ / withheld: ___ {no ketorolac/ibuprofen for abd pain: bleeding risk}.
 **Escalation line:** [No peritoneal signs, hemodynamically stable throughout / sepsis screen positive, see Metabolic block / hypotensive with GI bleed: ___ {fluids, goal}, hospital notified of unstable GI bleed].
@@ -314,7 +311,7 @@ Exposure: ___ {allergen, route, time}. Prior anaphylaxis Hx [Y, to ___ / N]. Epi
 Presentation: [rash/hives ___ distribution / itching / facial or oral edema ___ / stridor / wheezing / resp distress / hypotension SBP ___ / GI sx: N/V, abd pain, diarrhea / ___]. [ANAPHYLAXIS: severe resp distress, facial/oral edema, or hypoperfusion, OR Hx of anaphylaxis + exposure + (resp distress / hypoperfusion / rash) / allergic reaction, systemic criteria not met].
 Epi 0.3 mg (1 mg/mL) IM x___, response: ___ / withheld: ___ {criteria not met}.
 Albuterol 2.5 mg / ipratropium 0.5 mg neb for wheezing, x___ / withheld: ___.
-IV ___g ___. NS 500 mL bolus for SBP <100 / MAP <65, reassessed ___, repeated ___ {to 2 L, L/S clear} / none.
+NS 500 mL bolus for SBP <100 / MAP <65, reassessed ___, repeated ___ {to 2 L, L/S clear} / none.
 Diphenhydramine 50 mg [IV / IM] / withheld: ___. Dexamethasone 10 mg [PO / IM / IV] / withheld: ___.
 Epi infusion started at ___ {start 5, titrate to MAP >65 / SBP >100} mcg/min, titrated ___ / not indicated.
 Pt reassessed: airway ___, L/S ___, SBP ___, rash ___.
@@ -341,9 +338,9 @@ Escalates to: Trauma Major on any RED criterion (burns + trauma go to trauma cen
 
 Source: ___ {flame, scald, chemical ___, electrical ___ V AC/DC, contact time ___, lightning}. Enclosed space [Y, duration ___ / N]. Burning stopped by ___. Scene [safe / utility secured by ___].
 Burns: ___ {degree, location, circumferential Y/N}, ___% BSA (rule of nines: ___) {first-degree excluded from BSA}. Airway: [no facial burns, singed nasal hair, soot, or voice change / ___: airway burn suspected]. {CO considered: SpCO ___ / see Tox CO fork.}
-{Electrical:} Entry ___, exit ___, [LOC / tetany / fall from ___]. Monitor: ___ {rhythm; dysrhythmia → add Cardiac 2b}. 12-lead: ___. {Lightning/high voltage: c-spine per Trauma criteria.}
+{Electrical:} Entry ___, exit ___, [LOC / tetany / fall from ___]. Monitor: ___ {rhythm; dysrhythmia → add Cardiac 2b}. {Lightning/high voltage: c-spine per Trauma criteria.}
 Rings/constricting items removed. Dressings: [dry sterile / moist sterile (≤10% BSA, for pain)]. {Chemical: flushed ___ min with ___; dry powder brushed first.} {Eye: irrigated with NS, copious; tetracaine 2 gtt q5 prn.}
-IV ___g ___ x [1 / 2]. NS 500 mL bolus, reassessed ___. Hypothermia prevention ___ {>10% BSA: dry dressings only, pt kept warm}.
+NS 500 mL bolus, reassessed ___. Hypothermia prevention ___ {>10% BSA: dry dressings only, pt kept warm}.
 Analgesia: fentanyl ___ mcg, pain ___ to ___ / ketamine ___ / withheld: ___.
 Destination: [ED ___ / trauma center (burns + trauma) / burn center per med control, cited above].
 **Escalation line:** [Airway patent and voice unchanged throughout, rhythm ___ / airway involvement progressed / dysrhythmia ___, see Cardiac 2b. RED criteria: none / MET ___, Trauma Major.]
@@ -467,14 +464,14 @@ Volume: NS ___ via [IV x2 / IO].
 Destination if ROSC: trauma center ___. TOR: traumatic arrests follow the same criteria; med control contact ___ documented above.
 
 ## 21. TEMPLATE: STEMI
-{Starts as Cardiac 2a; from the moment criteria fire, this replaces it.}
+{Stacks after Cardiac 2a; anything 2a already stated is not repeated here.}
 
-12-lead: ST elevation ___ mm in ___ {leads}, [reciprocal depression ___ / none], [new LBBB]. STEMI identified. {Inferior: R-sided 12-lead: [RV involvement ___ / negative].}
+STEMI criteria on 12-lead: ST elevation ___ mm in ___ {leads}, [reciprocal depression ___ / none], [new LBBB]. STEMI identified. {Inferior: R-sided 12-lead: [RV involvement ___ / negative].}
 STEMI alert called to ___, [confirmed by Dr. ___ / transmitted, unconfirmed].
 Destination: ___ {PCI-capable, ETA ___ min from pt contact; <90 min window [met / not met, med control consulted: ___]}.
 Defib pads placed. ASA 324 mg chewed / given prior / withheld: ___.
 NTG 0.4 mg SL x___, SBP ___ before each {>120 or MAP >90 required; withheld: ___ {SBP, RV involvement, phosphodiesterase-5 inhibitor}}.
-IV ___g ___. {SBP <100: supine, NS 500 mL, repeated ___ {to 2 L, L/S clear, goal SBP >100}.}
+{SBP <100: supine, NS 500 mL, repeated ___ {to 2 L, L/S clear, goal SBP >100}.}
 Fentanyl ___ mcg for pain ___ unrelieved by NTG, ___ to ___ / withheld: ___.
 {Med control adds:} Metoprolol 5 mg slow IV per Dr. ___ {HR >80 and SBP >120} / none.
 Serial 12-lead: ___. Reassessed en route q___: pain ___, rhythm ___ {watch for blocks and VF, pads already on}.
@@ -500,7 +497,7 @@ Deficits found: ___ {each named: facial droop ___ side, arm drift ___, speech __
 NYS-LAMS Score: ___/6 {droop ___, drift ___, speech ___, grip ___}.
 BGL ___ {<60 treated per Metabolic block: ___, deficits [resolved → not a stroke alert, chart it / persist]}. Anticoagulated [Y ___ / N]. Recent surgery/trauma/GI bleed [___ / none reported]. Seizure at onset [Y / N].
 Stroke alert called to ___ with LKW and NYS-LAMS. Destination: [NYS-LAMS 0-3: ___ {NYS stroke center} / NYS-LAMS 4-6: exclusions reviewed, ___ {thrombectomy-capable}], txp decision per ___ {protocol / med control Dr. ___}.
-IV ___g ___. SBP ___ [maintained >120 / >220 or DBP >120: med control, orders ___]. Head of stretcher ___. NPO.
+SBP ___ [maintained >120 / >220 or DBP >120: med control, orders ___]. Head of stretcher ___. NPO.
 Serial neuro: [unchanged / evolving: ___]. {Deficits resolving en route: documented as ___, alert NOT cancelled by EMS.}
 Prenote update: ETA, deficits, LKW, family [following / contact ___ given to RN ___].
 
@@ -538,16 +535,16 @@ Pt A&Ox4 (P, P, T, E), A, - LOC, and complaining of "pressure in the middle of m
 Pt PMHx HTN, hyperlipidemia, type 2 diabetes mellitus, ex-smoker quit 2015, no prior cardiac Hx. Meds per list, compliant. NKDA. Last oral intake dinner 1900. No MOLST.
 
 Vitals as noted in emsCharts activity log, concerning for initial BP 152/90, HR 88, RR 20, SpO2 96% on 2 LPM, BGL 164.
+12-lead acquired: NSR 88, normal axis, intervals WNL, nonspecific T-wave flattening in V5-V6, no ST elevation or depression, no reciprocal changes, transmitted.
+IV 18g L AC.
 
 Working impression ACS. DDx unstable angina vs NSTEMI vs aortic dissection vs PE.
 Secondary assessment head-to-toe unremarkable except mild diaphoresis, resolved by 2230. Abd soft, non-tender. No pedal edema. Neuro grossly intact.
 
 {The Cardiac block — the only one stacked on this call — is its own paragraph:}
 Pt describes substernal pressure, non-reproducible, non-pleuritic, no tearing quality, equal radial pulses bilaterally, no calf tenderness, no recent immobility. Associated diaphoresis, N/V, and lightheadedness. Cardiac risk factors HTN, HLD, DM, former smoker, FHx father MI at 62.
-12-lead acquired at 2214: NSR 88, normal axis, intervals WNL, nonspecific T-wave flattening in V5-V6, no ST elevation or depression, no reciprocal changes.
 ASA 324 mg PO administered at 2216.
 NTG 0.4 mg SL x2 at 2217 and 2223, pain 7 to 3/10, BP 138/84 after second dose.
-IV 18g L AC at 2220, saline lock. Fluids none.
 Fentanyl withheld: pain improved to 3/10 with NTG, pt declined further analgesia.
 Serial 12-lead at 2228: unchanged.
 STEMI criteria not met on serial 12-leads.
@@ -633,3 +630,12 @@ Abbreviations kept in the standard's emitted text, for a reader without EMS back
 **v0.11 — 2026-09-06.** Field Ledger review applied (first pass: shell, cardiac, active shooter, dispositions). 57 blanks removed, almost all intervention timestamps that already live in the emsCharts activity log; with them went three payload-only clauses (ACS suspected etiology, ACS IV fluids/bolus, lidocaine dose). One line removed: last menstrual period. Option lists tightened on 12 choices: "concerning for" → "unstable", "UNSTABLE" → "unstable", "focused" → "focused exam", "head-to-toe" → "head-to-toe exam", "repeated" → "unconverted"; dropped "refuses" (bare), "rate change", "Pt contact made", "warm zone established at ___". Seven fields changed control (free text ↔ pills/chips): card_acs_riskfactors, sh_lung_sounds, sh_pulse_status, sh_molst_detail, card_brady_tcp_confirm, card_narrow_irreg_drug, card_wide_stable_drug. "other…" escape toggled on 26 choices; 7 hints rewritten to Alex's wording. Worksheet-only: question-style labels on 20 fields (`q` property, narrative unaffected) and 22 pre-selected defaults. Version bump to v0.11: structural DOC change.
 
 **v0.12 — 2026-09-06.** Clock-time inputs removed across every remaining category and template: 259 blanks deleted (ids ending `_time`, `_t1`–`_t5`, `_time_val`, and the unmasked epi/defib/ROSC/STEMI-identified/call-time stamps), all timestamps of EMS actions or observations that already live in the emsCharts activity log. Kept: history facts reported by others (last known well, symptom onset, time of injury, exposure time, witnessed-arrest time, "found at," "last seen at baseline," pre-EMS epi-pen/antipyretic use) and durations/intervals (q___ min, ___ min apart, downtime, submersion minutes, LOC minutes, APGAR 1/5). Sentences tidied by dropping the "at ___" phrase; a line whose only blank was the time stays as a fixed sentence (e.g. "ASA 324 mg chewed administered."). Seven lines hand-repaired after the automated pass: ca_tor_medcontrol, sh_medcontrol_line, ob_pph, ob_delivery, doa_found, brn_dressings, brn_eye. 67 option labels regenerated across 47 lines; 6 stale carry entries removed. Builder: HHMM mask and soft clock validation removed. Dose-count blanks added where the removed timestamps carried the count: ca_epi_count, alg_epi_count, resp_ra_epi_count (x___, no default). Version bump to v0.12: structural DOC change.
+
+**v0.13 — 2026-09-06.** Initial 12-lead and IV access hoisted out of per-block sentences into two new optional sentences in the shell Assessment paragraph (vitals paragraph): `sh_12lead_line` and `sh_iv_line`. Neither carries a proposed default — not every pt gets a 12-lead or IV — so an untouched sentence emits nothing and raises no open item, exactly like any other optional line.
+- Block copies of the generic 12-lead-acquired sentence removed outright (now redundant with the shell sentence): `resp_chf_12l`, `tox_12lead`, `met_dka_12lead`, `gen_labs_12lead`, `gen_screen_12lead`, `abd_12lead`. `card_acs_12l` keeps only its R-sided-12-lead content, now its own optional sentence ("inferior changes only"); its old "12-lead acquired…transmitted" clause is gone with it.
+- Block copies of the generic IV-access sentence removed outright: `card_acs_iv`, `card_dys_iv`, `gen_iv`, `st_iv`, `cva_iv`, `met_sep_iv`, `trm_circ_access`. The same clause trimmed out of lines that combine IV access with block-specific content, leaving the rest of each sentence unchanged: `trg_iv` (now just the Fluids choice, relabeled "Fluids"), `met_dka_iv`, `abd_iv`, `alg_iv`, `brn_iv`, `neur_iv_reassess` (relabeled "Reassessment"). `brn_iv`'s "x [1 / 2]" IV-line-count choice (`brn_iv_lines`) went with it, including its DEFAULTS preselect.
+- `card_dys_monitor` drops its "12-lead confirms ___" clause (relabeled "Monitor") — now covered by the shell sentence. `brn_electrical` drops its trailing "12-lead: ___" clause the same way (relabeled "Electrical entry/exit, monitor"); the monitor rhythm stays. Worksheet labels on the trimmed IV lines now name what is left: `met_dka_iv` "NS / reassessed", `abd_iv` and `alg_iv` "NS bolus", `brn_iv` "NS bolus, hypothermia prevention".
+- STEMI stacks after Cardiac 2a instead of replacing it from the moment criteria fire (template intro and the matching §21 note reworded). Its initial-12-lead line rewords to "STEMI criteria on 12-lead: …" (relabeled "STEMI criteria"; fields unchanged). The 2a escalation line's fired text drops the criteria detail and alert destination — that's now stated once, in the STEMI template itself — down to "STEMI criteria MET on 12-lead." This is a real behavior change, not just wording: `card_acs_esc`'s carry to `st_alert_dest` is removed, so firing the escalation no longer prefills the STEMI template's alert-destination field.
+- Twin groups reshaped for the new shape (Conventions bullet reworded to match — earliest-carrier-states-it, not always "the first block"): `twelve-lead` and `twelve-lead-not-indicated` removed (every member is now either the single shell sentence or deleted outright). `iv` now pairs the shell IV sentence with the Cardiac Arrest template's access line (`sh_iv_line`, `ca_access`). `ntg-withheld` renamed `ntg` and gains `card_acs_ntg` (2a's own NTG line, previously ungrouped). New groups for sentences 2a and STEMI now both carry once STEMI stacks instead of replaces: `rsided-12lead` (`card_acs_12l`, `st_rsided_12lead`), `asa` (`card_acs_asa`, `st_asa`), `hypotension-bolus` (`card_acs_hypo`, `st_hypotension_tx`), `pads` (`card_dys_pads`, `st_pads`), `reassessed-en-route` (`sh_reassess_line`, `st_reassess`).
+- Worked sample (§26) respaced: the 12-lead and IV sentences move out of the Cardiac paragraph into the vitals paragraph, phrased per the new shell sentences ("12-lead acquired: …, transmitted." / "IV 18g L AC."); the stale, DOC-unbacked "Fluids none." clause and the "at 2220, saline lock" detail are dropped with the move.
+- Builder: the worksheet's twin-suppression rule changes from first-in-chart-wins to claim-by-position, so a sentence hoisted to the shell is unambiguously the earliest carrier regardless of which stacked block a medic fills in first — shipped in the paired engine PR, not this one. Version bump to v0.13: structural DOC change.
