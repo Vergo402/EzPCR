@@ -1854,8 +1854,20 @@ function renderLine(line, ctx, sectionId, sectionName, missing) {
     if (rows.length) missing.push.apply(missing, c.missing);
     return rows;
   };
-  if (!lineEligible(line, ctx)) return [];
   if (lineHidden(line.id, ctx.d)) return [];
+  const eligible = lineEligible(line, ctx);
+  // CLAIM PASS: every undeleted line is reported, a fork through its chosen arms, and
+  // the row says whether the line CLAIMS its twin group. A line a stacked box owns
+  // claims by position alone — typed or not, required or `opt` — because the box was
+  // chosen to tell that part of the story; a shell line claims only once it is
+  // eligible (required, or an `opt`/`cond` row the medic has used), so the shell's
+  // always-present optional rows never pre-empt a template's own sentence. The gate
+  // sits ABOVE lineAccepted on purpose: a sentence claims the moment its box is stacked.
+  if (ctx.claimPass && line.kind !== "fork") {
+    const rec = LINE_INDEX[line.id];
+    return [{ lineId: line.id, claims: eligible || !rec || rec.ownerType !== "shell" }];
+  }
+  if (!eligible) return [];
   // A twin already stated earlier in the narrative emits nothing AND asks nothing —
   // the gate sits above the tri/esc branches, whose open items go straight to the
   // outer `missing` and would otherwise leak past it.
@@ -1876,12 +1888,6 @@ function renderLine(line, ctx, sectionId, sectionName, missing) {
     });
     return rows;
   }
-
-  // CLAIM PASS: the line exists on the chart — it is eligible and not deleted — which
-  // is everything twin claiming needs to know. The gate sits ABOVE lineAccepted on
-  // purpose: a required sentence claims its twin group the moment the box is stacked,
-  // before the medic has typed a word into it.
-  if (ctx.claimPass) return [{ lineId: line.id }];
 
   // Nothing is written until the medic accepts it: an untouched skeleton emits no
   // text and raises no open item, so it cannot reach the clipboard unnoticed.
@@ -2093,20 +2099,20 @@ function claimRows(ctx) {
  * either of them. That is what stops two stacked boxes from both offering to state the
  * same fact and leaving the medic to discover the collision by filling in both.
  *
- * "On the chart" is claimRows()' test — lineEligible && !lineHidden, read BEFORE
- * lineAccepted — so the two kinds of line claim at the two right moments:
- *   · a REQUIRED line claims the instant its box is stacked, with no values in it;
- *   · an `opt`/`cond` line is not on the chart until it is touched (that is precisely
- *     what lineEligible computes), so it claims only once the medic reaches for it,
- *     and until then a later member of its group is free to claim instead.
+ * "On the chart" is claimRows()' test — every undeleted line the assembler would walk,
+ * read BEFORE lineAccepted — and each row says whether it CLAIMS:
+ *   · a line a stacked BOX owns claims the instant its box is stacked, typed or not,
+ *     required or `opt`: the box was chosen to tell that part of the story, so a later
+ *     box never offers the same sentence again, not even as a folded "+ add" row;
+ *   · a SHELL line claims only once it is eligible (required, or an `opt`/`cond` row
+ *     the medic has used): the shell's optional rows are placeholders on every chart,
+ *     and an unused one must not pre-empt a template's own sentence (an arrest's
+ *     access line stays live until the medic writes the IV into the shell row).
+ * A row whose group is already claimed is suppressed whether or not it claims, so a
+ * folded optional copy in a later box goes to the footer like any other twin.
  * Deleting the winner (lineHidden) takes it off the chart, so the group falls through
  * to the next member — the loser un-suppresses on its own rather than stranding the
  * fact with nothing to state it.
- *
- * A member hoisted into the shell claims ahead of every box member of its group,
- * regardless of print position: the shell states its sentence wherever its section
- * prints, and no stacked block or template ever repeats it. Among box members —
- * today, every member of every group — the ordinal rule below is what decides it.
  *
  * Rows are put in ORDINAL order — the same ordinal-then-walk-order sort paragraphs()
  * makes WITHIN a bucket, so a dragged block counts as earlier when it reads earlier.
@@ -2136,7 +2142,7 @@ function twinSuppression(ctx) {
     if (at != null) carried = at;
     const rec = LINE_INDEX[l.lineId];
     rows.push({ lineId: l.lineId, sort: at != null ? at : carried, seq: rows.length,
-                shell: (rec && rec.ownerType === "shell") ? 0 : 1 });
+                shell: (rec && rec.ownerType === "shell") ? 0 : 1, claims: l.claims !== false });
   });
   rows.sort(function (a, b) { return (a.shell - b.shell) || (a.sort - b.sort) || (a.seq - b.seq); });
 
@@ -2146,7 +2152,7 @@ function twinSuppression(ctx) {
   rows.forEach(function (r) {
     const g = TWIN_OF[r.lineId];
     if (!g) return;
-    if (!winner[g]) { winner[g] = r.lineId; return; }
+    if (!winner[g]) { if (r.claims) winner[g] = r.lineId; return; }
     if (winner[g] === r.lineId) return;            // one line, several rows
     const cite = { by: winner[g], byOwner: twinOwnerName(winner[g]) };
     if (anyway["line:" + r.lineId]) shown[r.lineId] = cite;
