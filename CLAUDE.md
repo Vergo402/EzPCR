@@ -2,6 +2,9 @@
 
 Single-file offline tool: `PCR Narrative Builder v1.html` assembles a PCR narrative from a
 keyboard-driven worksheet for paste into emsCharts. `index.html` only redirects to it.
+Design context: `PRODUCT.md` (product truth) and `DESIGN.md` (incumbent visual system) are
+read by `/impeccable`; a `<style>` change that moves a token or rule updates `DESIGN.md` in
+the same PR.
 
 ## Source of truth and data-first editing
 - The newest `PCR Narrative Standard DRAFT v*.md` is authoritative. Any wording, option, or
