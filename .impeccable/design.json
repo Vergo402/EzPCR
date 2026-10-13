@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-13T00:00:00Z",
+  "title": "Design System: PCR Narrative Builder",
+  "extensions": {
+    "colorMeta": {
+      "pencil-ink": { "role": "primary", "displayName": "Pencil Ink", "canonical": "#23201A", "tonalRamp": ["oklch(15% 0.01 80)", "oklch(24% 0.01 80)", "oklch(34% 0.01 80)", "oklch(46% 0.01 80)", "oklch(58% 0.01 80)", "oklch(70% 0.01 80)", "oklch(84% 0.01 80)", "oklch(95% 0.01 80)"] },
+      "ink-pressed": { "role": "primary", "displayName": "Ink Pressed", "canonical": "#3A362E", "tonalRamp": ["oklch(15% 0.012 80)", "oklch(24% 0.012 80)", "oklch(34% 0.012 80)", "oklch(46% 0.012 80)", "oklch(58% 0.012 80)", "oklch(70% 0.012 80)", "oklch(84% 0.012 80)", "oklch(95% 0.012 80)"] },
+      "cream-page": { "role": "neutral", "displayName": "Cream Page", "canonical": "#F7F4ED", "tonalRamp": ["oklch(15% 0.012 85)", "oklch(26% 0.012 85)", "oklch(38% 0.012 85)", "oklch(50% 0.012 85)", "oklch(62% 0.012 85)", "oklch(76% 0.012 85)", "oklch(88% 0.012 85)", "oklch(96.5% 0.012 85)"] },
+      "bright-leaf": { "role": "neutral", "displayName": "Bright Leaf", "canonical": "#FCFAF4", "tonalRamp": ["oklch(15% 0.01 90)", "oklch(26% 0.01 90)", "oklch(38% 0.01 90)", "oklch(50% 0.01 90)", "oklch(62% 0.01 90)", "oklch(76% 0.01 90)", "oklch(88% 0.01 90)", "oklch(98.5% 0.01 90)"] },
+      "pencil-grey": { "role": "neutral", "displayName": "Pencil Grey", "canonical": "#5F594C", "tonalRamp": ["oklch(15% 0.02 85)", "oklch(26% 0.02 85)", "oklch(36% 0.02 85)", "oklch(45% 0.02 85)", "oklch(58% 0.02 85)", "oklch(70% 0.02 85)", "oklch(84% 0.02 85)", "oklch(95% 0.02 85)"] },
+      "graphite": { "role": "neutral", "displayName": "Graphite", "canonical": "#4A463D", "tonalRamp": ["oklch(15% 0.015 85)", "oklch(26% 0.015 85)", "oklch(38% 0.015 85)", "oklch(50% 0.015 85)", "oklch(62% 0.015 85)", "oklch(76% 0.015 85)", "oklch(88% 0.015 85)", "oklch(95% 0.015 85)"] },
+      "rule-faint": { "role": "neutral", "displayName": "Rule Faint", "canonical": "#DFD8C9", "tonalRamp": ["oklch(15% 0.025 85)", "oklch(26% 0.025 85)", "oklch(38% 0.025 85)", "oklch(50% 0.025 85)", "oklch(62% 0.025 85)", "oklch(76% 0.025 85)", "oklch(88% 0.025 85)", "oklch(95% 0.025 85)"] },
+      "rule-strong": { "role": "neutral", "displayName": "Rule Strong", "canonical": "#CCC3B0", "tonalRamp": ["oklch(15% 0.03 85)", "oklch(26% 0.03 85)", "oklch(38% 0.03 85)", "oklch(50% 0.03 85)", "oklch(62% 0.03 85)", "oklch(72% 0.03 85)", "oklch(82% 0.03 85)", "oklch(95% 0.03 85)"] },
+      "pencil-rule": { "role": "neutral", "displayName": "Pencil Rule", "canonical": "#9A8F78", "tonalRamp": ["oklch(15% 0.04 85)", "oklch(26% 0.04 85)", "oklch(38% 0.04 85)", "oklch(50% 0.04 85)", "oklch(64% 0.04 85)", "oklch(76% 0.04 85)", "oklch(88% 0.04 85)", "oklch(95% 0.04 85)"] },
+      "placeholder-grey": { "role": "neutral", "displayName": "Placeholder Grey", "canonical": "#756D5D", "tonalRamp": ["oklch(15% 0.025 80)", "oklch(26% 0.025 80)", "oklch(38% 0.025 80)", "oklch(52% 0.025 80)", "oklch(62% 0.025 80)", "oklch(76% 0.025 80)", "oklch(88% 0.025 80)", "oklch(95% 0.025 80)"] },
+      "erase-tint": { "role": "neutral", "displayName": "Erase Tint", "canonical": "#F2EEE3", "tonalRamp": ["oklch(15% 0.02 85)", "oklch(26% 0.02 85)", "oklch(38% 0.02 85)", "oklch(50% 0.02 85)", "oklch(62% 0.02 85)", "oklch(76% 0.02 85)", "oklch(88% 0.02 85)", "oklch(95% 0.02 85)"] },
+      "neutral-grey": { "role": "neutral", "displayName": "Neutral Grey", "canonical": "#6B655B", "tonalRamp": ["oklch(15% 0.015 85)", "oklch(26% 0.015 85)", "oklch(38% 0.015 85)", "oklch(49% 0.015 85)", "oklch(62% 0.015 85)", "oklch(76% 0.015 85)", "oklch(88% 0.015 85)", "oklch(95% 0.015 85)"] },
+      "neutral-grey-wash": { "role": "neutral", "displayName": "Neutral Grey Wash", "canonical": "#EFEBE1", "tonalRamp": ["oklch(15% 0.02 85)", "oklch(26% 0.02 85)", "oklch(38% 0.02 85)", "oklch(50% 0.02 85)", "oklch(62% 0.02 85)", "oklch(76% 0.02 85)", "oklch(88% 0.02 85)", "oklch(94% 0.02 85)"] },
+      "given-green": { "role": "tertiary", "displayName": "Given Green", "canonical": "#3E6B4F", "tonalRamp": ["oklch(15% 0.05 155)", "oklch(26% 0.05 155)", "oklch(36% 0.05 155)", "oklch(47% 0.05 155)", "oklch(60% 0.05 155)", "oklch(74% 0.05 155)", "oklch(86% 0.05 155)", "oklch(95% 0.05 155)"] },
+      "given-green-wash": { "role": "tertiary", "displayName": "Given Green Wash", "canonical": "#E7EDE4", "tonalRamp": ["oklch(15% 0.02 155)", "oklch(26% 0.02 155)", "oklch(38% 0.02 155)", "oklch(50% 0.02 155)", "oklch(62% 0.02 155)", "oklch(76% 0.02 155)", "oklch(88% 0.02 155)", "oklch(94% 0.02 155)"] },
+      "given-green-rule": { "role": "tertiary", "displayName": "Given Green Rule", "canonical": "#BFD3C5", "tonalRamp": ["oklch(15% 0.03 155)", "oklch(26% 0.03 155)", "oklch(38% 0.03 155)", "oklch(50% 0.03 155)", "oklch(62% 0.03 155)", "oklch(74% 0.03 155)", "oklch(84% 0.03 155)", "oklch(95% 0.03 155)"] },
+      "withheld-amber": { "role": "tertiary", "displayName": "Withheld Amber", "canonical": "#8A6D2F", "tonalRamp": ["oklch(15% 0.08 80)", "oklch(26% 0.08 80)", "oklch(38% 0.08 80)", "oklch(51% 0.08 80)", "oklch(62% 0.08 80)", "oklch(76% 0.08 80)", "oklch(88% 0.08 80)", "oklch(95% 0.08 80)"] },
+      "withheld-amber-wash": { "role": "tertiary", "displayName": "Withheld Amber Wash", "canonical": "#F3ECD9", "tonalRamp": ["oklch(15% 0.03 85)", "oklch(26% 0.03 85)", "oklch(38% 0.03 85)", "oklch(50% 0.03 85)", "oklch(62% 0.03 85)", "oklch(76% 0.03 85)", "oklch(88% 0.03 85)", "oklch(94% 0.03 85)"] },
+      "fired-red": { "role": "tertiary", "displayName": "Fired Red", "canonical": "#A63A2B", "tonalRamp": ["oklch(15% 0.12 30)", "oklch(26% 0.12 30)", "oklch(38% 0.12 30)", "oklch(48% 0.12 30)", "oklch(60% 0.12 30)", "oklch(74% 0.12 30)", "oklch(86% 0.12 30)", "oklch(95% 0.12 30)"] },
+      "fired-red-wash": { "role": "tertiary", "displayName": "Fired Red Wash", "canonical": "#F3E3DD", "tonalRamp": ["oklch(15% 0.03 30)", "oklch(26% 0.03 30)", "oklch(38% 0.03 30)", "oklch(50% 0.03 30)", "oklch(62% 0.03 30)", "oklch(76% 0.03 30)", "oklch(88% 0.03 30)", "oklch(93% 0.03 30)"] },
+      "fired-red-rule": { "role": "tertiary", "displayName": "Fired Red Rule", "canonical": "#D8B0A4", "tonalRamp": ["oklch(15% 0.05 30)", "oklch(26% 0.05 30)", "oklch(38% 0.05 30)", "oklch(50% 0.05 30)", "oklch(62% 0.05 30)", "oklch(78% 0.05 30)", "oklch(88% 0.05 30)", "oklch(95% 0.05 30)"] }
+    },
+    "typographyMeta": {
+      "brand": { "displayName": "Brand", "purpose": "The serif wordmark in the top bar." },
+      "narrative": { "displayName": "Narrative", "purpose": "The preview text — the finished chart, max 70ch, 1.8 leading." },
+      "body": { "displayName": "Body", "purpose": "Default page text in Archivo." },
+      "section": { "displayName": "Section", "purpose": "Uppercase, letterspaced worksheet section names." },
+      "line-label": { "displayName": "Line label", "purpose": "The name at the head of a worksheet row." },
+      "field-label": { "displayName": "Field label", "purpose": "The inline key before a value; top-bar labels; notes." },
+      "value": { "displayName": "Value", "purpose": "Filled field text and control labels." },
+      "pill": { "displayName": "Pill", "purpose": "Option pills, chips, tabs." },
+      "keyhint": { "displayName": "Key hint", "purpose": "Mono hints: the hint strip, in-row hints, status bar." },
+      "counter": { "displayName": "Counter", "purpose": "Mono tabular character count against the 4,000 cap." }
+    },
+    "shadows": [
+      { "name": "focused-row", "value": "0 1px 3px rgba(60,50,30,.10)", "purpose": "The row with keyboard focus; the only in-flow shadow." },
+      { "name": "active-tab", "value": "0 1px 2px rgba(60,50,30,.1)", "purpose": "The selected draft tab." },
+      { "name": "lifted", "value": "0 6px 16px rgba(60,50,30,.18)", "purpose": "A line or section being dragged or keyboard-grabbed." },
+      { "name": "popup", "value": "0 8px 24px rgba(60,50,30,.18)", "purpose": "Add-block popup and hidden-items popover." },
+      { "name": "modal", "value": "0 20px 60px rgba(60,50,30,.25)", "purpose": "The modal card over a 35% black scrim." },
+      { "name": "cursor-ring", "value": "0 0 0 1.5px #23201A inset", "purpose": "The pill under the keyboard cursor." }
+    ],
+    "motion": [
+      { "name": "hover-reveal", "value": "opacity .12s ease", "purpose": "Drag handle and delete × fade in on row hover; always visible on touch." }
+    ],
+    "breakpoints": [
+      { "name": "stack", "value": "1099px", "purpose": "At or below: panes stack, preview pane static, top-bar controls full width." },
+      { "name": "wide", "value": "1100px", "purpose": "At or above: pane gap and padding grow to 20px." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The default outline button on the sheet; hover warms to the page color.",
+      "html": "<button class=\"ds-btn\">Polish</button>",
+      "css": ".ds-btn { font-family: Archivo, system-ui, sans-serif; font-size: 13px; cursor: pointer; height: 30px; padding: 0 12px; border-radius: 6px; background: #FCFAF4; border: 1px solid #CCC3B0; color: #23201A; } .ds-btn:hover { background: #F7F4ED; border-color: #9A8F78; } .ds-btn:active { background: #F2EEE3; } .ds-btn:focus-visible { outline: 2px solid #23201A; outline-offset: 2px; }"
+    },
+    {
+      "name": "Primary Button (Copy)",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one filled button: solid ink, carries the open-item count; flips to the red soft gate when pressed with open items.",
+      "html": "<button class=\"ds-btn-primary\">Copy (1 open)</button> <button class=\"ds-btn-primary ds-confirming\">Copy anyway?</button>",
+      "css": ".ds-btn-primary { font-family: Archivo, system-ui, sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; height: 30px; padding: 0 12px; min-width: 150px; border-radius: 6px; background: #23201A; border: 1px solid #23201A; color: #F7F4ED; } .ds-btn-primary:hover { background: #3A362E; border-color: #3A362E; } .ds-btn-primary.ds-confirming { background: #FCFAF4; color: #A63A2B; border-color: #D8B0A4; } .ds-btn-primary.ds-confirming:hover { background: #F3E3DD; } .ds-btn-primary:focus-visible { outline: 2px solid #23201A; outline-offset: 2px; }"
+    },
+    {
+      "name": "Danger Ghost (New call)",
+      "kind": "button",
+      "refersTo": "button-danger-ghost",
+      "description": "Red-outlined ghost button for starting over; the only red outside the clinical tones.",
+      "html": "<button class=\"ds-btn-danger\">New call</button>",
+      "css": ".ds-btn-danger { font-family: Archivo, system-ui, sans-serif; font-size: 13px; cursor: pointer; height: 30px; padding: 0 12px; border-radius: 6px; background: #FCFAF4; border: 1px solid #D8B0A4; color: #A63A2B; } .ds-btn-danger:hover { background: #F3E3DD; } .ds-btn-danger:focus-visible { outline: 2px solid #23201A; outline-offset: 2px; }"
+    },
+    {
+      "name": "Option Pills",
+      "kind": "chip",
+      "refersTo": "pill",
+      "description": "Default, selected (inverted to ink), proposed (dashed italic), and the keyboard-cursor ring.",
+      "html": "<span class=\"ds-pills\"><button class=\"ds-pill ds-on\">+</button><button class=\"ds-pill ds-prop ds-hl\">Radial</button><button class=\"ds-pill ds-prop\">Reg</button><button class=\"ds-pill\">other…</button></span>",
+      "css": ".ds-pills { display: inline-flex; gap: 4px; flex-wrap: wrap; } .ds-pill { font-family: Archivo, system-ui, sans-serif; font-size: 12px; cursor: pointer; height: 25px; padding: 0 11px; border-radius: 999px; background: #FCFAF4; border: 1px solid #CCC3B0; color: #23201A; } .ds-pill:hover { background: #F7F4ED; border-color: #9A8F78; } .ds-pill.ds-on { background: #23201A; color: #F7F4ED; border-color: #23201A; font-weight: 500; } .ds-pill.ds-prop { border-style: dashed; color: #5F594C; font-style: italic; } .ds-pill.ds-hl { box-shadow: 0 0 0 1.5px #23201A inset; } .ds-pill:focus-visible { outline: 2px solid #23201A; outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input (underline)",
+      "kind": "input",
+      "refersTo": "input-text",
+      "description": "No box — a pencil-rule underline that turns ink on hover and focus; a proposal input is dashed with an italic placeholder Enter accepts.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"reason for dispatch\"> <input class=\"ds-input ds-proposal\" type=\"text\" placeholder=\"strong, regular radial\">",
+      "css": ".ds-input { font-family: Archivo, system-ui, sans-serif; font-size: 13px; color: #23201A; background: transparent; border: none; border-bottom: 1.5px solid #9A8F78; border-radius: 0; height: 30px; padding: 0 8px; } .ds-input::placeholder { font-style: italic; color: #756D5D; } .ds-input:hover, .ds-input:focus-visible { border-bottom-color: #23201A; outline: none; } .ds-input.ds-proposal { border-bottom-style: dashed; } .ds-input.ds-proposal::placeholder { color: #5F594C; opacity: 1; }"
+    },
+    {
+      "name": "Select",
+      "kind": "input",
+      "refersTo": "select",
+      "description": "The boxed control on the sheet; hover warms to the page color with a pencil-rule border.",
+      "html": "<select class=\"ds-select\"><option>35M1</option><option>35M2</option><option>35M3</option><option>other…</option></select>",
+      "css": ".ds-select { font-family: Archivo, system-ui, sans-serif; font-size: 13px; color: #23201A; background: #FCFAF4; border: 1px solid #CCC3B0; border-radius: 6px; height: 30px; padding: 0 8px; } .ds-select:hover { border-color: #9A8F78; background: #F7F4ED; } .ds-select:focus-visible { outline: 2px solid #23201A; outline-offset: 2px; }"
+    },
+    {
+      "name": "Top Bar",
+      "kind": "nav",
+      "refersTo": "button-secondary",
+      "description": "Cream page, serif wordmark with mono version tag, controls pushed right, the single ink rule beneath.",
+      "html": "<header class=\"ds-topbar\"><div class=\"ds-brand\">PCR Narrative Builder <span class=\"ds-version\">Builder v1 · source v0.13 · NYS v26.1</span></div><div class=\"ds-controls\"><label class=\"ds-tb\"><span class=\"ds-tblabel\">Unit</span><select class=\"ds-select\"><option>35M1</option></select></label><button class=\"ds-btn\">+ add assessment block</button><button class=\"ds-btn-danger\">New call</button></div></header><div class=\"ds-keyhint\">↵ accept · type to change · Tab skip · nothing is written until you accept it</div>",
+      "css": ".ds-topbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; background: #F7F4ED; border-bottom: 1px solid #23201A; padding: 10px 16px; font-family: Archivo, system-ui, sans-serif; color: #23201A; } .ds-brand { display: flex; align-items: baseline; gap: 8px; font-family: 'Source Serif 4', 'Iowan Old Style', Charter, Georgia, serif; font-size: 19px; font-weight: 600; white-space: nowrap; } .ds-version { font-family: ui-monospace, Menlo, monospace; font-size: 11px; font-weight: 400; color: #5F594C; } .ds-controls { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; } .ds-tb { display: inline-flex; align-items: center; gap: 5px; } .ds-tblabel { font-size: 11px; color: #5F594C; } .ds-select { font-family: inherit; font-size: 13px; color: #23201A; background: #FCFAF4; border: 1px solid #CCC3B0; border-radius: 6px; height: 30px; padding: 0 8px; } .ds-btn { font-family: inherit; font-size: 13px; height: 30px; padding: 0 12px; border-radius: 6px; background: #FCFAF4; border: 1px solid #CCC3B0; color: #23201A; } .ds-btn:hover { background: #F7F4ED; border-color: #9A8F78; } .ds-btn-danger { font-family: inherit; font-size: 13px; height: 30px; padding: 0 12px; border-radius: 6px; background: #FCFAF4; border: 1px solid #D8B0A4; color: #A63A2B; } .ds-btn-danger:hover { background: #F3E3DD; } .ds-keyhint { font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; color: #5F594C; background: #F7F4ED; border-bottom: 1px solid #DFD8C9; padding: 5px 16px; }"
+    },
+    {
+      "name": "Worksheet Row",
+      "kind": "custom",
+      "refersTo": "pill",
+      "description": "A section head over a focused row with inline label, pills, and the mono key hint; a grouped sub-row with the 2px left rule beneath.",
+      "html": "<div class=\"ds-ws\"><div class=\"ds-sechead\"><h3 class=\"ds-secname\">Primary</h3></div><div class=\"ds-row ds-focused\"><span class=\"ds-flabel\">pulse status:</span><button class=\"ds-pill ds-on\">+</button><button class=\"ds-pill ds-prop ds-hl\">Radial</button><button class=\"ds-pill\">other…</button><span class=\"ds-hint\">↵ accept · Tab skip</span></div><div class=\"ds-row ds-sub\"><span class=\"ds-flabel\">pulse desc:</span><span class=\"ds-fval ds-proposed\">strong, regular radial</span></div><div class=\"ds-row ds-sub\"><span class=\"ds-flabel\">skin:</span><span class=\"ds-fval\">warm, dry, intact</span></div></div>",
+      "css": ".ds-ws { font-family: Archivo, system-ui, sans-serif; font-size: 13px; color: #23201A; background: #F7F4ED; padding: 8px; } .ds-sechead { border-bottom: 1px solid #DFD8C9; padding-bottom: 5px; margin-bottom: 3px; } .ds-secname { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .11em; color: #5F594C; margin: 0; } .ds-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 5px 8px; border: 1px solid transparent; border-radius: 6px; } .ds-row:hover { background: #F2EEE3; } .ds-row.ds-focused { align-items: center; background: #FCFAF4; border-color: #23201A; box-shadow: 0 1px 3px rgba(60,50,30,.10); } .ds-row.ds-sub { margin-left: 14px; padding-left: 6px; border-left: 2px solid #DFD8C9; border-radius: 0; } .ds-flabel { font-size: 11px; color: #5F594C; } .ds-fval { color: #23201A; } .ds-fval.ds-proposed { color: #5F594C; font-style: italic; } .ds-hint { font-family: ui-monospace, Menlo, monospace; font-size: 10px; color: #5F594C; white-space: nowrap; margin-left: auto; } .ds-pill { font-family: inherit; font-size: 12px; height: 25px; padding: 0 11px; border-radius: 999px; background: #FCFAF4; border: 1px solid #CCC3B0; color: #23201A; } .ds-pill.ds-on { background: #23201A; color: #F7F4ED; border-color: #23201A; font-weight: 500; } .ds-pill.ds-prop { border-style: dashed; color: #5F594C; font-style: italic; } .ds-pill.ds-hl { box-shadow: 0 0 0 1.5px #23201A inset; }"
+    },
+    {
+      "name": "Preview Head + Narrative",
+      "kind": "card",
+      "refersTo": "missing-badge",
+      "description": "The sheet-colored preview pane: counter, open badge, Polish, Copy, then the serif narrative with a blank, a proposed default, and the focused fragment inline.",
+      "html": "<section class=\"ds-preview\"><div class=\"ds-pvhead\"><span class=\"ds-counter\">312 / 4,000</span><span class=\"ds-badge\">1 open</span><button class=\"ds-btn\">Polish</button><button class=\"ds-btn-primary\">Copy (1 open)</button></div><div class=\"ds-pvtext\">35M1 dispatched to <span class=\"ds-pvfocus\">above address</span> for chest pain. 35M1 responded emergency. Pt A&amp;Ox4, <span class=\"ds-pvprop\">- LOC</span>, and complaining of <span class=\"ds-pvblank\">___</span>.</div></section>",
+      "css": ".ds-preview { font-family: Archivo, system-ui, sans-serif; background: #FCFAF4; border: 1px solid #DFD8C9; border-radius: 8px; overflow: hidden; color: #23201A; } .ds-pvhead { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #DFD8C9; flex-wrap: wrap; } .ds-counter { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: #5F594C; font-variant-numeric: tabular-nums; margin-right: auto; } .ds-badge { font-size: 11px; font-weight: 500; color: #A63A2B; background: #F3E3DD; border-radius: 4px; padding: 2px 9px; } .ds-btn { font-family: inherit; font-size: 13px; height: 30px; padding: 0 12px; border-radius: 6px; background: #FCFAF4; border: 1px solid #CCC3B0; color: #23201A; } .ds-btn:hover { background: #F7F4ED; border-color: #9A8F78; } .ds-btn-primary { font-family: inherit; font-size: 13px; font-weight: 500; height: 30px; padding: 0 12px; min-width: 150px; border-radius: 6px; background: #23201A; border: 1px solid #23201A; color: #F7F4ED; } .ds-btn-primary:hover { background: #3A362E; } .ds-pvtext { padding: 14px; max-width: 70ch; font-family: 'Source Serif 4', 'Iowan Old Style', Charter, Georgia, serif; font-size: 13.5px; line-height: 1.8; } .ds-pvblank { background: #F3E3DD; color: #A63A2B; border-bottom: 1.5px solid #A63A2B; border-radius: 2px 2px 0 0; padding: 0 6px; font-weight: 500; } .ds-pvprop { color: #5F594C; font-style: italic; border-bottom: 1px dotted #CCC3B0; } .ds-pvfocus { background: #EAE3D0; box-shadow: inset 0 -2px 0 #23201A; border-radius: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Field Notebook",
+    "overview": "A pocket notebook the medic writes in after the call. The page is cream, the ink is one near-black pencil, and the proposals the builder makes are written faintly in italic until the medic overwrites or accepts them. Nothing on the page competes for attention because nothing on the page is decoration: every mark is either a label, a value, a rule, or a key hint. The narrative preview is the notebook's fair-copy page, set in serif at a reading leading, while the worksheet beside it is the working page in a small sans.\n\nThe mood is calm and clerical. Calm: one accent, used only for the two things that interrupt the writing (starting a new call, and the open-item gate on Copy). Clerical: small uppercase section heads, aligned inline labels, hairline rules between sections, a monospace strip of key hints. Density is deliberate — a 13.5px body and 13px values on a laptop put a whole shell section on one screen, and the tool is driven from the keyboard, so rows are tight and controls are short.\n\nSelection is never a new hue. A chosen pill inverts to solid ink on cream; a focused row gains an ink border; a confirmed value turns from faint grey to full ink. Clinical meaning, when it exists, borrows the three tones the chart itself uses — given (green), withheld (amber), fired (red) — and only on settled decisions.",
+    "keyCharacteristics": [
+      "One ink: near-black is both the text color and the selection fill; there is no brand blue.",
+      "Proposals are faint italic; acceptance turns them upright and full ink.",
+      "Hairline warm-grey rules structure the page; shadows appear only on things that float.",
+      "Serif for what the medic reads (wordmark, narrative); sans for what the medic fills; mono for hints and counts.",
+      "Light mode only, embedded fonts, no motion beyond a 120 ms hover reveal."
+    ],
+    "rules": [
+      { "name": "The One Ink Rule", "body": "Selection, focus, and primary action are all expressed by Pencil Ink — a fill, a border, or a full-strength text color. No hue is introduced to mean \"chosen\".", "section": "colors" },
+      { "name": "The Settled Tone Rule", "body": "Green, amber, and red appear only on a decision the medic has made (given / withheld / fired) or on a gate the medic must clear (open items, the cap). A proposal is never colored; it is faint and italic.", "section": "colors" },
+      { "name": "The Red Interrupt Rule", "body": "Outside the clinical tones, red is reserved for New call and the open-item gate on Copy. Nothing else on the page is red.", "section": "colors" },
+      { "name": "The Two-Weight Rule", "body": "The sans has 400 and 500 and nothing heavier. Emphasis beyond 500 is done with ink (color), case, or spacing — never with bold.", "section": "typography" },
+      { "name": "The Italic Means Proposal Rule", "body": "Italic in the worksheet or preview always means \"the builder's suggestion, not yet accepted\" (proposed values, dashed proposal pills, proposal placeholders, unattested defaults). Do not use italic for emphasis or for titles.", "section": "typography" },
+      { "name": "The Paper-Over-Paper Rule", "body": "Nothing in the document flow casts a shadow except the focused row. A shadow means the element is floating above the page, and it is always warm brown.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do show selection by inverting to Pencil Ink (#23201A) on Cream Page (#F7F4ED); the on-pill, the Copy button, and the Polish toggle all use this one move.",
+      "Do write every proposal in Pencil Grey (#5F594C) italic with a dashed border or underline, and turn it upright and full ink the moment it is accepted.",
+      "Do keep text inputs as underlines (1.5px #9A8F78), not boxes; boxes are for selects, buttons, and pills.",
+      "Do reach for the warm-brown shadow (rgba(60,50,30,…)) only when something floats — popup, lifted drag, modal.",
+      "Do keep the sans at 400 and 500 and the serif at 400–600; set the narrative in Source Serif 4 at 1.8 leading.",
+      "Do reveal secondary controls (drag handle, delete ×) on hover with the 120 ms opacity fade, and leave them visible on touch."
+    ],
+    "donts": [
+      "Don't introduce a second accent hue; blue, teal, or purple do not exist in this system.",
+      "Don't color a value that the medic has not settled — green, amber, and red belong to given, withheld, and fired decisions and to the open-item and cap gates only.",
+      "Don't use red anywhere except New call, delete-on-hover, the open-item gate, and the fired tone.",
+      "Don't use italic for emphasis or titles; italic means \"proposed\".",
+      "Don't add dark mode, motion beyond the 120 ms hover reveal, or shadows in the document flow.",
+      "Don't replace the hairline Rule Faint (#DFD8C9) structure with cards; sections are rules and indents, not boxes."
+    ]
+  }
+}
