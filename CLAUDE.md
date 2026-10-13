@@ -4,7 +4,7 @@ Single-file offline tool: `PCR Narrative Builder v1.html` assembles a PCR narrat
 keyboard-driven worksheet for paste into emsCharts. `index.html` only redirects to it.
 
 ## Source of truth and data-first editing
-- `PCR Narrative Standard DRAFT v0.10.md` is authoritative. Any wording, option, or
+- The newest `PCR Narrative Standard DRAFT v*.md` is authoritative. Any wording, option, or
   structure change lands in the MD first; the builder's DOC then mirrors it exactly.
 - The DOC is the one-line JSON on the line beginning `window.__DOC__ =` in the HTML. Never
   hand-edit it: parse with Python (`json.loads` between `=` and the trailing `;`), mutate,
