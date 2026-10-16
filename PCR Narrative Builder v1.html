@@ -1551,7 +1551,8 @@ function setHidden(key, on) {
 /**
  * OMIT BY DEFAULT: a skeleton the medic has not answered is not part of the chart.
  * A line emits only once the medic's own input reaches it — a value in `values`, a
- * fork arm in `forks`, a settled tri mode, a settled escalation. Until then it emits
+ * fork arm in `forks`, a settled tri mode, a settled escalation, a picked disposition
+ * (which puts that disposition's sentence in play, blanks and all). Until then it emits
  * nothing AND raises no open item, so a fresh draft's narrative is genuinely empty
  * rather than a page of proposals waiting to be disowned.
  *
@@ -1570,6 +1571,10 @@ function lineFieldless(line) {
 function lineAccepted(line, d) {
   if (lineFieldless(line)) return true;
   if (lineTouched(line, d)) return true;
+  // Picking a disposition puts its sentence in play: its blanks are open items from the
+  // pick on. An `opt`/`cond` line never gets here untouched (lineEligible), so stays optional.
+  const rec = LINE_INDEX[line.id];
+  if (rec && rec.ownerType === "disposition") return true;
   if (line.kind === "tri") return triSettled(line.id);
   if (line.kind === "esc") return escSettled(line.id);
   return false;
@@ -1857,15 +1862,16 @@ function renderLine(line, ctx, sectionId, sectionName, missing) {
   if (lineHidden(line.id, ctx.d)) return [];
   const eligible = lineEligible(line, ctx);
   // CLAIM PASS: every undeleted line is reported, a fork through its chosen arms, and
-  // the row says whether the line CLAIMS its twin group. A line a stacked box owns
-  // claims by position alone — typed or not, required or `opt` — because the box was
-  // chosen to tell that part of the story; a shell line claims only once it is
-  // eligible (required, or an `opt`/`cond` row the medic has used), so the shell's
-  // always-present optional rows never pre-empt a template's own sentence. The gate
-  // sits ABOVE lineAccepted on purpose: a sentence claims the moment its box is stacked.
+  // the row says whether the line CLAIMS its twin group. A line claims only while it
+  // PRINTS — the real render below emits a row that is not an unaccepted proposal. A
+  // copy that is untouched, set to omit, or otherwise emits nothing states nothing, so
+  // it claims nothing and the group falls through to the next copy that does. Rendered
+  // unsuppressed (claimRows clears ctx.suppressed) into a throwaway `missing`.
   if (ctx.claimPass && line.kind !== "fork") {
-    const rec = LINE_INDEX[line.id];
-    return [{ lineId: line.id, claims: eligible || !rec || rec.ownerType !== "shell" }];
+    ctx.claimPass = false;
+    const printed = renderLine(line, ctx, sectionId, sectionName, []);
+    ctx.claimPass = true;
+    return [{ lineId: line.id, claims: printed.some(function (r) { return !r.proposed; }) }];
   }
   if (!eligible) return [];
   // A twin already stated earlier in the narrative emits nothing AND asks nothing —
@@ -2053,11 +2059,11 @@ function assembleOnce(ctx) {
 /**
  * THE assembler. Twin dedupe has to be settled BEFORE any sentence is built, because a
  * suppressed line must emit nothing and ask nothing — so the traversal runs twice: a
- * CLAIM PASS that only asks which lines are on the chart and in what order, then the
- * one real pass with the losers gated out. The claim pass builds no text and commits no
- * open item, so the narrative is still the product of a single assembleOnce() and stays
- * byte-identical to the one-pass output when nothing is suppressed (ctx.suppressed is
- * then an empty object, which gates nothing).
+ * CLAIM PASS that only asks which lines are on the chart, in what order, and which of
+ * them print, then the one real pass with the losers gated out. The claim pass keeps no
+ * text and commits no open item, so the narrative is still the product of a single
+ * assembleOnce() and stays byte-identical to the one-pass output when nothing is
+ * suppressed (ctx.suppressed is then an empty object, which gates nothing).
  * @param {Object} ctx @returns {Object} the assembly, plus `suppressed` / `twinShown`
  */
 function assemble(ctx) {
@@ -2074,9 +2080,9 @@ function assemble(ctx) {
  * Every line ON THE CHART right now, in the order the narrative reads them. Runs the
  * one authoritative traversal — assembleOnce, so shell sections minus the collapsed and
  * DOA-N/A ones, the slot's boxes at the anchor, then the disposition, recursing into a
- * fork's CHOSEN arms exactly as renderLine does — with `claimPass` on, which stops each
- * line short of building any text. Nothing it produces is kept but the ids.
- * @param {Object} ctx @returns {Array<{lineId:string}>} in traversal order
+ * fork's CHOSEN arms exactly as renderLine does — with `claimPass` on, which renders each
+ * line only to learn whether it prints. Nothing it produces is kept but ids and claims.
+ * @param {Object} ctx @returns {Array<{lineId:string, claims:boolean}>} in traversal order
  */
 function claimRows(ctx) {
   const wasSuppressed = ctx.suppressed;
@@ -2093,21 +2099,17 @@ function claimRows(ctx) {
 }
 
 /**
- * Which twin sentences lose. A group is claimed BY POSITION, not by emission: the first
- * member in reading order that is ON THE CHART keeps the group from the moment it is
- * there, and every later member is skipped whether or not anything has been typed into
- * either of them. That is what stops two stacked boxes from both offering to state the
- * same fact and leaving the medic to discover the collision by filling in both.
+ * Which twin sentences lose. A group is claimed by the first member in reading order
+ * that actually PRINTS, and every later member is skipped from then on, typed into or
+ * not. A copy that prints nothing — untouched, set to omit, deleted — states nothing,
+ * so it claims nothing: the claim falls through to the next copy that prints, and while
+ * no copy prints none is skipped and each stays in its own box (standard, Conventions).
  *
- * "On the chart" is claimRows()' test — every undeleted line the assembler would walk,
- * read BEFORE lineAccepted — and each row says whether it CLAIMS:
- *   · a line a stacked BOX owns claims the instant its box is stacked, typed or not,
- *     required or `opt`: the box was chosen to tell that part of the story, so a later
- *     box never offers the same sentence again, not even as a folded "+ add" row;
- *   · a SHELL line claims only once it is eligible (required, or an `opt`/`cond` row
- *     the medic has used): the shell's optional rows are placeholders on every chart,
- *     and an unused one must not pre-empt a template's own sentence (an arrest's
- *     access line stays live until the medic writes the IV into the shell row).
+ * "On the chart" is claimRows()' test — every undeleted line the assembler would walk —
+ * and each row says whether it CLAIMS, which is whether its real render emits a row
+ * that is not an unaccepted proposal (see renderLine's claim pass). So a shell row
+ * claims once the medic writes into it, exactly as a box row does: an arrest's access
+ * line stays live until the medic writes the IV into the shell row.
  * A row whose group is already claimed is suppressed whether or not it claims, so a
  * folded optional copy in a later box goes to the footer like any other twin.
  * Deleting the winner (lineHidden) takes it off the chart, so the group falls through
@@ -2274,8 +2276,8 @@ function rowPara(unitId, row, overrides) {
 
 /**
  * Copy renders every flagged span — proposed as well as missing — as "___", so the
- * character count never counts text the medic has not stood behind. The copy gate
- * keeps both counts at zero, so in practice this is only ever the honest counter.
+ * character count never counts text the medic has not stood behind, and a Copy forced
+ * past the gate (or a Polish seeded from it) carries "___" there, never a proposal.
  * @returns {string} sentinel-free text
  */
 function blankText(raw) {
@@ -2288,10 +2290,13 @@ function blankText(raw) {
   return out;
 }
 
-/** @returns {string} the narrative exactly as it will be pasted (no sentinels) */
+/** @returns {string} the narrative exactly as it will be pasted (no sentinels). Holds
+ *  only what the medic accepted: a row that is still a proposal (an unsettled escalation's
+ *  normal sentence) copies as one "___" — forced Copy, Polish's seed and the counter
+ *  included — while the preview keeps showing it faintly (assemblyHtml). */
 function assemblyText(asm) {
   return paragraphs(asm).map(function (rows) {
-    return joinRows(rows, function (l) { return blankText(l.raw); });
+    return joinRows(rows, function (l) { return l.proposed ? "___" : blankText(l.raw); });
   }).filter(function (t) { return t !== ""; }).join("\n\n");
 }
 
@@ -4045,16 +4050,21 @@ function warnPolish() {
 
 /* ============================ copy ============================ */
 
-/** The gate is clear only when nothing is left to fill AND nothing is left to confirm. */
+/** The gate is clear only when nothing is left to fill AND nothing is left to confirm.
+ *  In Polish the hand-edited text is what copies, so the gate counts the "___" still in
+ *  it — the same count paintCopyLabel and the badge show. */
 function doCopy() {
   const btn = document.getElementById("copy-btn");
   const c = openCounts();
-  const openActive = c.open > 0 && !draft().polish;
+  const polish = draft().polish;
+  const openActive = c.open > 0 && !polish;
+  const blanks = polish ? countBlanks(polish.text) : 0;
   const over = charCount(currentText()) - CHAR_RED;
   const overActive = over > 0;
-  if ((openActive || overActive) && !ui.copyPending) {
+  if ((openActive || blanks > 0 || overActive) && !ui.copyPending) {
     ui.copyPending = true;
     const bits = [];
+    if (blanks > 0) bits.push(blanks + " ___ in text");
     if (openActive && c.missing) bits.push(c.missing + " to fill");
     if (openActive && c.proposed) bits.push(c.proposed + " to confirm");
     if (openActive && c.duplicate) bits.push(c.duplicate + " duplicate");
