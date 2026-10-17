@@ -24,7 +24,7 @@ the same PR.
 - ES5-style JS matching the file; keep everything in the single HTML file.
 
 ## Engine map (names, not line numbers)
-- Assembly: `assemble` (claim pass: `claimRows` → `twinSuppression`, shell members first, then by position) → `assembleOnce` → `renderSection`
+- Assembly: `assemble` (claim pass: `claimRows` → `twinSuppression`; a line claims only while it prints, first printing member in reading order wins) → `assembleOnce` → `renderSection`
   → `renderLine` (gates: `lineEligible`, `lineHidden`, twin `ctx.suppressed`,
   `lineAccepted`) → `renderParts` / `renderFill` / `renderChoice` / `renderSum` /
   `renderAox`. `paragraphs()` buckets rows by `paraOrder(ctx)` (tokens `p1..p4` and
