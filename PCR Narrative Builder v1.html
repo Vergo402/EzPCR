@@ -2464,7 +2464,7 @@ const DELETABLE_FIELD = { text: 1, pills: 1, chips: 1, aox: 1 };
 /** The sentence's own ×, in the handle gutter: hides the line on both sides. */
 function makeDeleteLine(lineId) {
   const b = el("button", "ws-del ws-del-line", "×");
-  b.type = "button";
+  b.type = "button"; b.tabIndex = -1;      // keyboard route: Delete/Backspace on the sentence's handle
   b.title = "delete sentence";
   b.setAttribute("aria-label", "delete sentence");
   b.addEventListener("click", function (e) { e.stopPropagation(); deleteLine(lineId); });
@@ -2473,7 +2473,7 @@ function makeDeleteLine(lineId) {
 /** The field's ×, at the right edge of its row. */
 function makeDeleteField(f) {
   const b = el("button", "ws-del ws-del-field", "×");
-  b.type = "button";
+  b.type = "button"; b.tabIndex = -1;      // keyboard route: Shift+Delete from the field
   b.title = "delete field";
   b.setAttribute("aria-label", "delete field");
   b.addEventListener("click", function (e) { e.stopPropagation(); deleteField(f.line.id, f.id); });
@@ -3235,6 +3235,12 @@ function settleFocus() {
   markPreviewFocus();
 }
 function restoreWorksheetFocus(caret) { focusControl(nodeForKey(ui.focusKey), caret); }
+/** Hand focus back to `n` if it is still on the page; true when it took it. */
+function refocus(n) {
+  if (!n || n === document.body || !document.body.contains(n)) return false;
+  try { n.focus({ preventScroll: true }); } catch (err) { /* silent no-op */ }
+  return document.activeElement === n;
+}
 
 /** The prose side of the cursor — repainted directly, never through renderPreview. */
 function markPreviewFocus() {
@@ -3921,7 +3927,7 @@ function askEscalate(line) {
     bodyNode: body,
     actions: [
       { label: "Cancel", cls: "quiet" },            // cancel: state untouched, pill reverts on re-render
-      { label: "Add", cls: "primary", onClick: function () { doEscalate(line, choice); } }
+      { label: "Add", cls: "primary", autofocus: true, onClick: function () { doEscalate(line, choice); } }
     ],
     onClose: function () { renderAll(); }
   });
@@ -4070,6 +4076,7 @@ function doCopy() {
   } else legacyCopy(text, done);
 }
 function legacyCopy(text, done) {
+  const prev = document.activeElement;   // ta.select() takes focus; hand it back below
   const ta = document.createElement("textarea");
   ta.value = text;
   ta.setAttribute("readonly", "");
@@ -4080,6 +4087,7 @@ function legacyCopy(text, done) {
   let ok = false;
   try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
   document.body.removeChild(ta);
+  refocus(prev);
   if (ok) { done(); return; }
   setStatus("copy failed — select the preview and copy manually");
   renderPreview();                       // restore the button's normal label
@@ -4088,6 +4096,8 @@ function legacyCopy(text, done) {
 /* ============================ modal ============================ */
 
 function openModal(cfg) {
+  const opener = document.activeElement;     // focus goes back here when the card closes
+  let preferred = null;                      // an action that opts in to opening focused
   const root = document.getElementById("modal-root");
   root.innerHTML = "";
   root.hidden = false;
@@ -4101,11 +4111,14 @@ function openModal(cfg) {
   const close = function () {
     root.hidden = true; root.innerHTML = "";
     document.removeEventListener("keydown", onKey);
+    // before onClose: a rebuild only keeps focus in the worksheet if it is already there
+    if (!refocus(opener)) restoreWorksheetFocus();
     if (cfg.onClose) cfg.onClose();
   };
   (cfg.actions || [{ label: "OK", cls: "primary" }]).forEach(function (a) {
     const b = el("button", "modal-btn " + (a.cls || ""), a.label);
     b.type = "button";
+    if (a.autofocus) preferred = b;
     b.addEventListener("click", function () {
       close();
       if (a.onClick) a.onClick();
@@ -4117,7 +4130,7 @@ function openModal(cfg) {
   root.addEventListener("click", function (e) { if (e.target === root) close(); }, { once: true });
   const onKey = function (e) { if (e.key === "Escape") close(); };
   document.addEventListener("keydown", onKey);
-  const first = row.querySelector("button");
+  const first = preferred || row.querySelector("button");
   if (first) first.focus();
 }
 
@@ -4764,6 +4777,13 @@ function wire() {
     if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true;
     if (!(e.target.closest && e.target.closest(".ws-hidden-wrap"))) closeHiddenPops();
   });
+  document.addEventListener("keydown", function (e) {
+    const pop = document.getElementById("add-block-popup");
+    if (e.key !== "Escape" || pop.hidden) return;
+    e.preventDefault();
+    pop.hidden = true;
+    document.getElementById("add-block").focus();
+  });
   document.getElementById("new-call").addEventListener("click", newCall);
   document.getElementById("reset-order").addEventListener("click", function () {
     resetOrder(); saveNow(); renderAll();
@@ -4822,6 +4842,7 @@ function boot() {
     pv.textContent = d.polish.text;
   }
   renderAll();
+  restoreWorksheetFocus();               // renderAll draws the cursor row; boot is when it takes focus
   if (ssOK) {
     setStatus("ready");
   } else {
