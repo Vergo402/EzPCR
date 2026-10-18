@@ -217,7 +217,7 @@ A warm paper-and-pencil palette: two off-whites, one ink, four greys, and three 
 - **Graphite** (#4A463D): line labels only (the slightly darker label at the head of a row).
 - **Rule Faint** (#DFD8C9): the default hairline — section heads, pane borders, the hairline above the preview's foot strip, the left rule on second-level sub-rows and a fork's chosen arm.
 - **Rule Strong** (#948870): the control-border floor, at 3:1 or better on both Cream Page and Bright Leaf — select, button, and pill borders, the paragraph badge outline, the dashed border of the hidden and twin chips and the open-detail button, the dotted underline on an unattested default in the preview, and the scrollbar thumb.
-- **Pencil Rule** (#948870): the underline of a text input at rest. It now has the same value as Rule Strong, so a control's hover border no longer changes; the two names stay so the input rule and the control border can part ways again.
+- **Pencil Rule** (#948870): the underline of a text input at rest. It shares Rule Strong's value; the two names stay so the input rule and the control border can part ways again. Controls show hover with a Pencil Grey border instead.
 - **Placeholder Grey** (#756D5D): italic placeholder text in inputs, field labels, idle hint text, the rows of an N/A section, an unattested default in the preview, and the empty preview's placeholder line.
 - **Erase Tint** (#F2EEE3): the hover wash on rows, popup rows, preview lines, and pressed buttons; the drop slot while dragging.
 - **Focus Wash** (#EAE3D0): the warm highlight behind the preview's focused fragment, and the selection colour for text anywhere on the page (ink text on it).
@@ -297,7 +297,7 @@ Borders carry meaning by style: solid hairline for structure, dashed for "offere
 ### Buttons
 Quiet until it matters: a sheet-colored outline button is the default, and the only filled button on the page is the one that finishes the job.
 - **Shape:** 30px tall, softly rounded (6px), 0 12px padding, 13px sans.
-- **Secondary (default):** Bright Leaf fill, Rule Strong border, ink text; hover → Cream Page fill (the Pencil Rule border it gains is now the same value as Rule Strong, so only the fill changes); active → Erase Tint.
+- **Secondary (default):** Bright Leaf fill, Rule Strong border, ink text; hover → Cream Page fill with a Pencil Grey border; active → Erase Tint.
 - **Primary (Copy):** solid Pencil Ink, cream text, weight 500, min-width 176px, 34px tall; hover → Ink Pressed. The label carries the open count ("Copy (1 open)").
 - **Primary, confirming:** when Copy is pressed with open items it flips to Bright Leaf with Fired Red text and rule; hover → Fired Red Wash. This is the soft gate.
 - **Danger ghost (New call):** outline with Fired Red text and rule; hover → Fired Red Wash. Separated from the rest of the top bar by a hairline divider.
