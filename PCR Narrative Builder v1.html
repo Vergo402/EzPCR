@@ -23,9 +23,9 @@ body {
   --paper: #F7F4ED; --sheet: #FCFAF4;
   --ink: #23201A; --ink-hover: #3A362E;
   --text: #23201A; --text-dim: #5F594C; --text-faint: #5F594C; --text-label: #5F594C; --text-2: #4A463D;
-  --border: #DFD8C9; --border-strong: #CCC3B0; --input-rule: #9A8F78; --placeholder: #756D5D;
+  --border: #DFD8C9; --border-strong: #948870; --input-rule: #948870; --placeholder: #756D5D;
   --green-bg: #E7EDE4; --green-text: #3E6B4F; --green-border: #BFD3C5;
-  --amber-bg: #F3ECD9; --amber-text: #8A6D2F;
+  --amber-bg: #F3ECD9; --amber-text: #7E6326;
   --gray-bg: #EFEBE1; --gray-text: #6B655B;
   --red-bg: #F3E3DD; --red-text: #A63A2B; --red-border: #D8B0A4;
   --tint: #F2EEE3;
@@ -36,6 +36,9 @@ body {
 }
 :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .ws-field:focus-visible { outline-offset: -1px; }
+::selection { background: #EAE3D0; color: var(--ink); }
+input, select, [contenteditable] { caret-color: var(--ink); }
+html, #preview, #add-block-popup { scrollbar-color: var(--border-strong) transparent; scrollbar-width: thin; }
 
 /* ---- topbar ---- */
 #topbar {
@@ -60,7 +63,7 @@ input[type="text"] {
 }
 input[type="text"]::placeholder { font-style: italic; color: var(--placeholder); }
 input[type="text"]:focus-visible { border-bottom-color: var(--ink); }
-select:hover { border-color: var(--input-rule); background: var(--paper); }
+select:hover { border-color: var(--text-dim); background: var(--paper); }
 input[type="text"]:hover { border-bottom-color: var(--ink); }
 #category-select { min-width: 230px; }
 #unit-other { width: 6em; }
@@ -69,7 +72,7 @@ button {
   height: 30px; padding: 0 12px; background: var(--sheet);
   border: 1px solid var(--border-strong); color: var(--text);
 }
-button:hover { background: var(--paper); border-color: var(--input-rule); }
+button:hover { background: var(--paper); border-color: var(--text-dim); }
 button:active { background: var(--tint); }
 #new-call { border-color: var(--red-border); color: var(--red-text); }
 #new-call:hover { background: var(--red-bg); }
@@ -106,22 +109,22 @@ button:active { background: var(--tint); }
   background: var(--sheet); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
 }
 #keyhint-bar {
-  font-family: var(--mono); font-size: 10.5px; color: var(--text-faint);
+  font-family: var(--mono); font-size: 11px; color: var(--text-dim);
   background: var(--paper); border-bottom: 1px solid var(--border); padding: 5px 16px;
 }
 #statusbar { font-family: var(--mono); font-size: 11px; color: var(--text-dim); padding: 6px 16px; border-top: 1px solid var(--border); background: var(--paper); position: sticky; bottom: 0; z-index: 30; }
 
 /* ---- worksheet ---- */
-#worksheet { display: flex; flex-direction: column; gap: 20px; }
+#worksheet { display: flex; flex-direction: column; gap: 24px; }
 .ws-sec { display: flex; flex-direction: column; }
 .ws-sechead {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 3px;
+  border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 6px;
 }
-.ws-secname { font-family: var(--sans); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .11em; color: var(--text-faint); margin: 0; }
+.ws-secname { font-family: var(--sans); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .11em; color: var(--ink); margin: 0; }
 .ws-sectools { display: flex; gap: 6px; align-items: center; }
 .ws-rows { display: flex; flex-direction: column; }
-.ws-sec.ws-na .ws-rows { opacity: .55; }
+.ws-sec.ws-na .ws-rows { color: var(--placeholder); }
 .ws-note { font-size: 11px; color: var(--text-faint); line-height: 1.5; padding: 5px 8px; }
 .ws-subhead { font-size: 11px; font-weight: 500; color: var(--text-faint); padding: 9px 8px 3px; }
 .ws-sub { display: flex; flex-direction: column; margin-left: 14px; padding-left: 10px; border-left: 2px solid var(--border); }
@@ -135,21 +138,26 @@ button:active { background: var(--tint); }
    same focused or not: moving the cursor must not shift the rows around it. */
 .ws-row {
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;
-  padding: 5px 8px; font-size: 13px;
+  padding: 3px 8px; font-size: 13.5px; min-height: 28px;
   border: 1px solid transparent; border-radius: var(--radius-sm); scroll-margin-top: 78px;
 }
 .ws-row:hover { background: var(--tint); }
 .ws-row.ws-focused {
-  align-items: center;
+  align-items: baseline;
   background: var(--sheet); border-color: var(--ink); box-shadow: 0 1px 3px rgba(60,50,30,.10);
 }
 /* a field after a line's first (component pills, and the sum row that reads with
    them) indents as a sub-row, same idea as .ws-sub but scoped to one line. */
-.ws-row.ws-sub-1 { margin-left: 14px; padding-left: 6px; border-left: 2px solid var(--border); }
+/* the label column already lines a line's fields up, so continuation rows sit flush */
+.ws-row.ws-sub-1 { margin-left: 0; padding-left: 8px; border-left: 0; }
 /* wraps at spaces, hyphens, and the zero-width breaks wrapLabel puts after each "/" —
    never mid-word (break-word is only a last resort for a token wider than the row) */
 .ws-label, .ws-flabel { overflow-wrap: break-word; word-break: normal; }
 .ws-label { font-size: 11.5px; color: var(--text-2); letter-spacing: .03em; }
+/* the ledger: every row's label sits in one right-aligned column, its value beside it */
+.ws-row > .ws-label { flex: 0 0 8.75rem; text-align: right; margin-right: 4px; }
+.ws-row > .ws-field { flex: 1 1 auto; }
+.ws-row > .ws-rownote { padding-left: calc(8.75rem + 14px); }
 .ws-rownote { flex-basis: 100%; font-size: 11px; color: var(--text-faint); display: none; }
 .ws-row.ws-focused .ws-rownote { display: block; }
 .ws-deferred .ws-label { color: var(--text-faint); }
@@ -157,27 +165,28 @@ button:active { background: var(--tint); }
 
 /* field states: confirmed / proposed / amber */
 .ws-field { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 4px; max-width: 100%; border-radius: 3px; }
-.ws-flabel { font-size: 11px; color: var(--text-faint); }
+.ws-flabel { flex: 0 0 8.75rem; text-align: right; margin-right: 10px; font-size: 11.5px; color: var(--placeholder); }
 .ws-fval { overflow-wrap: anywhere; }
 .ws-check { font-size: 10px; color: var(--green-text); }
-.ws-set .ws-fval { color: var(--ink); }
-.ws-idle .ws-fval { color: var(--text-faint); }
+.ws-set .ws-fval { color: var(--ink); font-weight: 500; }
+.ws-idle .ws-fval { color: var(--placeholder); font-size: 12px; }
 /* a settled structural decision keeps its clinical colour */
 .ws-field .ws-fval.tone-fired { color: var(--red-text); font-weight: 500; }
 .ws-field .ws-fval.tone-given { color: var(--green-text); }
 .ws-field .ws-fval.tone-withheld { color: var(--amber-text); }
 .ws-proposed .ws-fval { color: var(--text-dim); font-style: italic; }
+/* an open item wears the same red chip here as its blank does in the preview */
 .ws-amber .ws-fval {
-  color: var(--amber-text); font-style: italic;
-  border-bottom: 1px dotted var(--amber-text); padding-bottom: 1px;
+  color: var(--red-text); background: var(--red-bg); font-weight: 500;
+  border-bottom: 1.5px solid var(--red-text); border-radius: 2px 2px 0 0; padding: 0 6px;
 }
 .ws-open .ws-fval { color: var(--green-text); }
 /* a computed sum row: read-only, never a "field" for focus purposes — see
    sumFieldNode(). Its value prints in the mono font like a typed number would. */
 .ws-sumfield { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; max-width: 100%; }
-.ws-sumval { font-family: var(--mono); color: var(--ink); }
+.ws-sumval { font-family: var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
 .ws-sumval.ws-sumval-empty { color: var(--text-faint); }
-.ws-sumauto { font-style: italic; opacity: .7; }
+.ws-sumauto { font-style: italic; color: var(--text-dim); }
 
 /* the cursor's field: its real control, in an accent box */
 .ws-field.ws-editing { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -188,7 +197,8 @@ button:active { background: var(--tint); }
    the dashed proposal pills, so it never reads as an ordinary "type something" hint */
 .ws-ctl input.proposal { border-bottom-style: dashed; }
 .ws-ctl input.proposal::placeholder { font-style: italic; color: var(--text-dim); opacity: 1; }
-.ws-keyhint { font-family: var(--mono); font-size: 10px; color: var(--text-faint); white-space: nowrap; }
+.ws-keyhint { font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); white-space: nowrap; }
+.ws-field.ws-editing > .ws-keyhint { flex-basis: 100%; padding-left: calc(8.75rem + 14px); }
 .ws-inline-note { font-size: 11px; color: var(--text-faint); font-style: italic; }
 .ws-openbtn { height: 24px; padding: 0 10px; font-size: 12px; color: var(--green-text); background: transparent; border: 1px dashed var(--border-strong); }
 .ws-openbtn:hover { background: var(--green-bg); border-color: var(--green-border); }
@@ -237,9 +247,12 @@ button:active { background: var(--tint); }
    lives in its sechead, not a .ws-line); only the .ws-line context also pins it to
    the top of the unit, aligned with the first row */
 .ws-para {
-  flex-shrink: 0; font-size: 10.5px; color: var(--text-faint);
-  border: 1px solid var(--border); border-radius: 999px; padding: 0 6px;
+  flex-shrink: 0; font-size: 11px; color: var(--text-dim);
+  border: 1px solid var(--border-strong); border-radius: 999px; padding: 0 6px;
 }
+/* only a moved paragraph is news; the rest show on hover */
+.ws-para:not(.ws-para-moved) { opacity: 0; transition: opacity .12s ease; }
+.ws-line:hover > .ws-para, .ws-sec:hover > .ws-sechead .ws-para { opacity: 1; }
 .ws-line > .ws-para { align-self: flex-start; margin-top: 5px; }
 .ws-para-moved { color: var(--amber-text); border-color: var(--amber-text); }
 
@@ -286,8 +299,8 @@ body.ws-dragging { user-select: none; -webkit-user-select: none; }
 
 .ws-hidden-wrap { position: relative; display: inline-flex; }
 .ws-hidden-chip {
-  height: 20px; padding: 0 8px; font-size: 10.5px; color: var(--text-faint);
-  background: transparent; border: 1px dashed var(--border); border-radius: 999px;
+  height: 22px; padding: 0 8px; font-size: 11.5px; color: var(--text-dim);
+  background: transparent; border: 1px dashed var(--border-strong); border-radius: 999px;
 }
 .ws-hidden-chip:hover { color: var(--ink); border-color: var(--border-strong); }
 /* A twin already stated earlier is GONE from its box, not dimmed inside it — a row the
@@ -297,7 +310,7 @@ body.ws-dragging { user-select: none; -webkit-user-select: none; }
    "+ N hidden" does. */
 .ws-twin-foot {
   display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
-  padding: 5px 8px; font-size: 12px; color: var(--text-faint);
+  padding: 5px 8px 5px calc(8px + 8.75rem + 14px); font-size: 12px; color: var(--text-dim);
 }
 .ws-twin-chip { margin-left: 6px; }
 .ws-twin-foot > .ws-twin-chip { margin-left: 0; }
@@ -309,7 +322,7 @@ body.ws-dragging { user-select: none; -webkit-user-select: none; }
 }
 
 /* ---- grouped rows: a line's later fields read as continuations of its first ---- */
-.ws-sub-1 { margin-left: 18px; padding-left: 10px; border-left: 2px solid var(--border); border-radius: 0; }
+.ws-sub-1 { margin-left: 0; padding-left: 8px; border-left: 0; border-radius: 0; }
 .ws-sub-2 { margin-left: 36px; padding-left: 10px; border-left: 2px solid var(--border); border-radius: 0; }
 
 /* ---- pills + chips (worksheet controls and the escalation modal) ---- */
@@ -321,32 +334,35 @@ body.ws-dragging { user-select: none; -webkit-user-select: none; }
 .pill-score b { font-weight: 500; margin-right: 3px; }
 
 /* ---- preview ---- */
-#preview-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+/* read the page, then copy: the counter and Copy sit at the foot of the narrative */
+#preview-head { order: 3; display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--border); background: var(--paper); flex-wrap: wrap; }
 #draft-chip { font-size: 11px; padding: 2px 9px; border-radius: 999px; background: var(--gray-bg); color: var(--text); font-weight: 500; }
-#char-counter { font-family: var(--mono); font-size: 11.5px; color: var(--text-dim); font-variant-numeric: tabular-nums; margin-right: auto; }
+#char-counter { font-family: var(--mono); font-size: 12.5px; color: var(--text-dim); font-variant-numeric: tabular-nums; margin-right: auto; }
 #char-counter.amber { color: var(--amber-text); font-weight: 500; }
 #char-counter.red { color: var(--red-text); font-weight: 500; }
-#char-warning { font-size: 11px; color: var(--red-text); padding: 6px 14px; background: var(--red-bg); border-bottom: 1px solid var(--border); }
+#char-warning { order: 2; font-size: 11px; color: var(--red-text); padding: 6px 14px; background: var(--red-bg); border-bottom: 1px solid var(--border); }
 #missing-badge { font-size: 11px; font-weight: 500; color: var(--red-text); background: var(--red-bg); border-radius: 4px; padding: 2px 9px; }
-#polish-banner { font-size: 12px; color: var(--amber-text); background: var(--amber-bg); padding: 7px 14px; border-bottom: 1px solid var(--border); }
+#polish-banner { order: 2; font-size: 12px; color: var(--amber-text); background: var(--amber-bg); padding: 7px 14px; border-bottom: 1px solid var(--border); }
+#polish-toggle { height: 34px; }
 #polish-toggle.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-#copy-btn { background: var(--ink); border-color: var(--ink); color: var(--paper); font-weight: 500; min-width: 150px; }
+#copy-btn { background: var(--ink); border-color: var(--ink); color: var(--paper); font-weight: 500; min-width: 176px; height: 34px; }
 #copy-btn:hover { background: var(--ink-hover); border-color: var(--ink-hover); }
 #copy-btn.confirming { background: var(--sheet); color: var(--red-text); border-color: var(--red-border); }
 #copy-btn.confirming:hover { background: var(--red-bg); }
 #preview {
-  flex: 1; overflow-y: auto; padding: 14px; max-width: 70ch;
+  order: 1; flex: 1; overflow-y: auto; padding: 24px 28px 28px; max-width: 75ch; min-height: 200px;
   font-family: var(--serif);
-  font-size: 13.5px; line-height: 1.8; color: var(--ink); white-space: pre-wrap; word-break: break-word;
+  font-size: 14.5px; line-height: 1.75; color: var(--ink); white-space: pre-wrap; word-break: break-word;
 }
 #preview[contenteditable="true"] { background: #FDFBF2; }
 #preview[contenteditable="true"]:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+#preview:empty::before { content: "The narrative builds here as you accept fields."; color: var(--placeholder); font-style: italic; }
 .pv-line { cursor: pointer; border-radius: 3px; padding: 0 2px; margin: 0 -2px; }
 .pv-line:hover { background: var(--tint); }
-.pv-blank { background: var(--red-bg); color: var(--red-text); border-bottom: 1.5px solid var(--red-text); border-radius: 2px 2px 0 0; padding: 0 6px; font-weight: 500; }
+.pv-blank { background: var(--red-bg); color: var(--red-text); border-bottom: 1.5px solid var(--red-text); border-radius: 2px 2px 0 0; padding: 0 5px; font-weight: 500; }
 .pv-blank:hover { background: var(--red-bg); border-radius: 3px; cursor: pointer; }
 /* a default the medic has not stood behind yet: present, but plainly not attested */
-.pv-proposed { color: var(--text-faint); font-style: italic; }
+.pv-proposed { color: var(--placeholder); font-style: italic; }
 .pv-proposed[data-field] { border-bottom: 1px dotted var(--border-strong); cursor: pointer; }
 .pv-proposed[data-field]:hover { background: var(--tint); }
 .pv-focus { background: #EAE3D0; box-shadow: inset 0 -2px 0 var(--ink); border-radius: 2px; }
@@ -354,7 +370,7 @@ body.ws-dragging { user-select: none; -webkit-user-select: none; }
 
 /* ---- modal ---- */
 #modal-root {
-  position: fixed; inset: 0; background: rgba(0,0,0,.35);
+  position: fixed; inset: 0; background: rgba(35,32,26,.38);
   display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px;
 }
 .modal-card { background: var(--sheet); border-radius: var(--radius); box-shadow: 0 20px 60px rgba(60,50,30,.25); width: 100%; max-width: 440px; padding: 20px; }
@@ -364,7 +380,7 @@ body.ws-dragging { user-select: none; -webkit-user-select: none; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .modal-btn.primary { background: var(--ink); border-color: var(--ink); color: var(--paper); font-weight: 500; }
 .modal-btn.primary:hover { background: var(--ink-hover); border-color: var(--ink-hover); }
-.modal-btn.danger { background: var(--red-text); border-color: var(--red-text); color: #fff; font-weight: 500; }
+.modal-btn.danger { background: var(--red-text); border-color: var(--red-text); color: var(--paper); font-weight: 500; }
 .modal-btn.danger:hover { background: #8C2F22; }
 
 /* ---- responsive ---- */
