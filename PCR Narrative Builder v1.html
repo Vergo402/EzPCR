@@ -1539,6 +1539,18 @@ function setAttested(lineId, on) {
 function triSettled(lineId) { return nonEmpty(draft().values["__tri__" + lineId]) || attested(lineId); }
 /** An esc line is settled once it fired, or not-fired was attested. */
 function escSettled(lineId) { return draft().esc[lineId] === "fired" || attested(lineId); }
+/** The esc line's target TEMPLATE already on the stack, if any: the call has escalated
+ *  there already, so firing has nothing to add. A stacked block is no such evidence. */
+function escStackedTarget(line, d) {
+  return (line.targets || []).find(function (t) {
+    return t.type === "template" && d.blockIds.indexOf(t.id) >= 0;
+  }) || null;
+}
+/** Which sentence an esc line states, or (unsettled) proposes: FIRED once fired, and
+ *  while its template is already stacked — never "not met" beside that template. */
+function escFired(line, d) {
+  return d.esc[line.id] === "fired" || (!escSettled(line.id) && !!escStackedTarget(line, d));
+}
 function forkSel(lineId) {
   const v = draft().forks[lineId];
   return Array.isArray(v) ? v : (nonEmpty(v) ? [v] : []);
@@ -1700,15 +1712,30 @@ function blankSpan(c, fieldId, hint, label, kind, text) {
   return BL0 + stripSentinels(text) + BL1;
 }
 
-/** @returns {string} the fill's value, a flagged blank, or "" — never a proposal:
- *  a signed-off default lives in the worksheet, where Enter accepts it, and reaches
- *  the narrative only once it has been written into the draft. */
+/** @returns {string} the fill's value, a flagged blank, or "" — never a proposal's
+ *  text: a signed-off default lives in the worksheet, where Enter accepts it, and reaches
+ *  the copy only once it has been written into the draft (see dispoDefault). */
 function renderFill(p, c) {
   if (fieldHidden(c.line.id, p.f, c.ctx.d)) return "";
   const v = c.ctx.d.values[p.f];
   if (nonEmpty(v)) return String(v);
-  if (p.req) return blankSpan(c, p.f, p.hint, null, "missing", "___");
-  return "";
+  if (!p.req) return "";
+  const def = dispoDefault(c, p.f);
+  if (def != null) return blankSpan(c, p.f, p.hint, null, "proposed", String(def));
+  return blankSpan(c, p.f, p.hint, null, "missing", "___");
+}
+/**
+ * A disposition is in play from the pick (lineAccepted), not from anything the medic
+ * wrote, so a default on its line is still a PROPOSAL: an empty required field that has
+ * one is flagged "proposed" (faint in preview and worksheet, "to confirm" at Copy,
+ * copied as "___" until Return accepts it). Its fields without a default stay blanks to
+ * fill. Every other line reaches a blank only once the medic has touched it.
+ * @returns {?(string|Array)} the default to propose, or null
+ */
+function dispoDefault(c, id) {
+  const rec = LINE_INDEX[c.line.id];
+  if (!rec || rec.ownerType !== "disposition") return null;
+  return defaultFor(id, c.ctx.d);
 }
 
 /** @returns {string} Oxford-joined selection text, a flagged blank, or "" */
@@ -1717,8 +1744,10 @@ function renderChoice(p, c) {
   const sel = c.ctx.d.values[p.id];
   const picked = p.multi ? (Array.isArray(sel) ? sel : []) : (nonEmpty(sel) ? [sel] : []);
   if (picked.length === 0) {
-    if (p.req) return blankSpan(c, p.id, p.hint, null, "missing", "___");
-    return "";
+    if (!p.req) return "";
+    const def = dispoDefault(c, p.id);
+    if (def != null) return blankSpan(c, p.id, p.hint, null, "proposed", oxford([].concat(def).map(String)));
+    return blankSpan(c, p.id, p.hint, null, "missing", "___");
   }
   const texts = picked.map(function (lab) { return choiceOptionText(p, lab, c); })
     .filter(function (t) { return t !== ""; });
@@ -1826,8 +1855,8 @@ function partsHaveValue(parts, values) {
 
 /** @param {string} [label] overrides the derived tail — for computed parts whose
  *  field id does not read as English (see renderAox).
- *  @param {string} [kind] always "missing" from a blank; "proposed" survives only as a
- *  LINE-level item (an unsettled tri or esc decision — see noteLineLevel) */
+ *  @param {string} [kind] "missing" from a blank; "proposed" from a disposition default
+ *  (dispoDefault) or a LINE-level item (an unsettled tri or esc decision — noteLineLevel) */
 function noteMissing(c, fieldId, hint, label, kind) {
   const lineLabel = c.line.label || c.line.id;
   const fieldLabel = label || fieldTail(fieldId, c.line.id, hint);
@@ -1929,10 +1958,11 @@ function renderLine(line, ctx, sectionId, sectionName, missing) {
     withheld = m === "withheld";
     raw = renderParts(m === "given" ? line.given : line.withheld, c);
   } else if (line.kind === "esc") {
-    const fired = ctx.d.esc[line.id] === "fired";
+    const fired = escFired(line, ctx.d);
     proposed = !escSettled(line.id);
     if (proposed) {
-      noteLineLevel(missing, line, sectionId, sectionName, "__esc__" + line.id, "not fired", "proposed");
+      noteLineLevel(missing, line, sectionId, sectionName, "__esc__" + line.id,
+        fired ? "fired" : "not fired", "proposed");
     }
     raw = renderParts(fired ? line.fired : line.normal, c);
   }
@@ -2956,7 +2986,7 @@ function lineFields(line, ctx) {
     if (m !== "omit") partFields(m === "given" ? line.given : line.withheld, line, ctx, out, 0);
   } else if (line.kind === "esc") {
     out.push({ line: line, id: "__esc__" + line.id, type: "esc", depth: 0 });
-    partFields(ctx.d.esc[line.id] === "fired" ? line.fired : line.normal, line, ctx, out, 0);
+    partFields(escFired(line, ctx.d) ? line.fired : line.normal, line, ctx, out, 0);
   } else if (line.kind === "fork") {
     out.push({ line: line, id: "__fork__" + line.id, type: "fork", depth: 0 });
   } else if (line.kind === "dispo") {
@@ -3086,7 +3116,7 @@ function fieldValueText(f) {
     const m = triMode(f.line.id);
     return m === "withheld" ? withheldWord(f.line) : m;
   }
-  if (f.type === "esc") return d.esc[f.line.id] === "fired" ? "FIRED" : "not fired";
+  if (f.type === "esc") return escFired(f.line, d) ? "FIRED" : "not fired";
   // branch labels run long, so an unpicked fork prompts rather than listing them
   if (f.type === "fork") { const s = forkSel(f.line.id); return s.length ? s.join(", ") : "pick one"; }
   if (f.type === "dispo") {
@@ -3465,6 +3495,7 @@ function triControl(n, box, f, ctx) {
 function escControl(n, box, f, ctx) {
   const line = f.line;
   const fired = ctx.d.esc[line.id] === "fired", settled = escSettled(line.id);
+  const propFired = !fired && escFired(line, ctx.d);   // its template is already stacked
   const set = function (v) {
     if (v === "fired") { askEscalate(line); return true; }
     delete ctx.d.esc[line.id];
@@ -3472,12 +3503,17 @@ function escControl(n, box, f, ctx) {
     return false;
   };
   optionRow(n, box, [
-    { v: "normal", t: "not fired", on: settled && !fired, prop: true },
-    { v: "fired", t: "FIRED", on: fired }
+    { v: "normal", t: "not fired", on: settled && !fired, prop: !propFired },
+    { v: "fired", t: "FIRED", on: fired, prop: propFired }
   ], false, function (v) { if (!set(v)) structuralEdit(); });
   if (line.escalatesTo) box.appendChild(el("span", "ws-inline-note", line.escalatesTo));
   n._accept = function () {
-    if (highlighted(n) === "fired") { set("fired"); return { hold: true }; }
+    if (highlighted(n) === "fired") {
+      // With its template already stacked no modal follows, so Return moves on.
+      const modal = !escStackedTarget(line, ctx.d);
+      set("fired");
+      return modal ? { hold: true } : {};
+    }
     set("normal");
     return { rebuild: true };
   };
@@ -3789,12 +3825,21 @@ function paintCopyLabel() {
   if (state.drafts.length >= 2) label += " — " + d.label;
   if (d.polish) {
     const n = countBlanks(d.polish.text);
-    if (n > 0) label += " (" + n + " ___)";
+    const bits = [];
+    if (n > 0) bits.push(n + " ___");
+    if (dispoUnpicked()) bits.push("no disposition");
+    if (bits.length) label += " (" + bits.join(" · ") + ")";
   } else {
     const n = openCounts().open;
     if (n > 0) label += " (" + n + " open)";
   }
   copy.textContent = label;
+}
+
+/** Polish copies hand-edited text, which cannot show a missing disposition, so its gate
+ *  asks the assembly: is one still unpicked where required (DOA replaces it)? */
+function dispoUnpicked() {
+  return ((lastAsm && lastAsm.missing) || []).some(function (m) { return m.fieldId === "__dispo__"; });
 }
 
 /** Any edit invalidates an armed copy-confirm: disarm and repaint the resting label. */
@@ -3920,6 +3965,10 @@ function toggleSub(owner, sb, multi) {
 function askEscalate(line) {
   const targets = line.targets || [];
   if (!targets.length) { draft().esc[line.id] = "fired"; renderAll(); return; }
+  // Its template is already stacked: nothing to offer, so it fires in place — carry
+  // applied, nothing stacked (pushOwner skips the id; its addendum is not pushed unasked).
+  const stacked = escStackedTarget(line, draft());
+  if (stacked) { doEscalate(line, { id: stacked.id }); return; }
   let choice = targets[0];
   const body = el("div");
   body.appendChild(el("p", null, "Add " + choice.label + " after this block? Entered values carry over."));
@@ -4068,19 +4117,21 @@ function warnPolish() {
 
 /** The gate is clear only when nothing is left to fill AND nothing is left to confirm.
  *  In Polish the hand-edited text is what copies, so the gate counts the "___" still in
- *  it — the same count paintCopyLabel and the badge show. */
+ *  it — the same count paintCopyLabel and the badge show — plus an unpicked disposition. */
 function doCopy() {
   const btn = document.getElementById("copy-btn");
   const c = openCounts();
   const polish = draft().polish;
   const openActive = c.open > 0 && !polish;
   const blanks = polish ? countBlanks(polish.text) : 0;
+  const noDispo = !!polish && dispoUnpicked();
   const over = charCount(currentText()) - CHAR_RED;
   const overActive = over > 0;
-  if ((openActive || blanks > 0 || overActive) && !ui.copyPending) {
+  if ((openActive || blanks > 0 || noDispo || overActive) && !ui.copyPending) {
     ui.copyPending = true;
     const bits = [];
     if (blanks > 0) bits.push(blanks + " ___ in text");
+    if (noDispo) bits.push("no disposition");
     if (openActive && c.missing) bits.push(c.missing + " to fill");
     if (openActive && c.proposed) bits.push(c.proposed + " to confirm");
     if (openActive && c.duplicate) bits.push(c.duplicate + " duplicate");
