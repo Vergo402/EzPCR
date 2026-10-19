@@ -646,3 +646,9 @@ Abbreviations kept in the standard's emitted text, for a reader without EMS back
 - A proposal the medic has not accepted is copied as `___`, never as its text. This holds when Copy is forced past open items and when the narrative is edited by hand (Polish); Polish starts from the same `___` text and its gate counts what is still blank. The preview may still show the proposal faintly; only the copied text changes.
 - A twin is suppressed only while an earlier copy actually prints. An earlier copy that is untouched, set to omit, or deleted no longer claims the sentence, so the later copy stays in its box and prints. This narrows the v0.13 claim-by-position rule (a stacked box no longer claims a sentence the instant it is stacked); order among copies that do print is unchanged.
 No DOC data changes and no version bump: these are builder behavior rulings, shipped in the paired engine PR.
+
+**v0.13 — 2026-10-18.** Three builder rulings after the second design review:
+- An escalation whose template is already stacked proposes its fired sentence, never the "not met" one, and firing it does not offer to add the template again. Cardiac 2a with STEMI stacked from the menu no longer proposes "STEMI criteria not met on serial 12-leads." next to "STEMI identified." The same holds for every block's escalation line and its template. Nothing prints until the medic accepts it.
+- A picked disposition's defaults (notify method "cell", "No pt changes throughout txp") are proposals the medic accepts with Return, like every other default. Only its fields without a default are blanks to fill. This refines the 2026-10-16 disposition-in-play rule: proposals still count as open items until accepted.
+- In Polish, Copy also asks first when no disposition is picked, not only when `___` is left in the text.
+No DOC data change and no version bump.
