@@ -653,4 +653,4 @@ No DOC data changes and no version bump: these are builder behavior rulings, shi
 - In Polish, Copy also asks first when no disposition is picked, not only when `___` is left in the text.
 No DOC data change and no version bump.
 
-**v0.13 — 2026-10-26.** PCR-07: removed a real nurse's name from the §26 worked sample ("report given to RN ___"). Wording-only, no DOC data change and no version bump.
+**v0.13 — 2026-10-26.** PCR-07: removed a personal name from the §26 worked sample ("report given to RN ___"). Wording-only, no DOC data change and no version bump.
