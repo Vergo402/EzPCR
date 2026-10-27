@@ -551,7 +551,7 @@ Serial 12-lead at 2228: unchanged.
 STEMI criteria not met on serial 12-leads.
 
 Pt reassessed en route at 2236: pain 2/10, skin warm and dry, SpO2 97% on 2 LPM. Remaining vitals per activity log.
-Pt txp ALS to NYP-HVHC. Hospital notified via cell at 2233. No pt changes throughout txp. Pt transferred to ED staff, report given to RN Martinez. 35M3 returned to service without further incident.
+Pt txp ALS to NYP-HVHC. Hospital notified via cell at 2233. No pt changes throughout txp. Pt transferred to ED staff, report given to RN ___. 35M3 returned to service without further incident.
 
 ---
 
@@ -652,3 +652,5 @@ No DOC data changes and no version bump: these are builder behavior rulings, shi
 - A picked disposition's defaults (notify method "cell", "No pt changes throughout txp") are proposals the medic accepts with Return, like every other default. Only its fields without a default are blanks to fill. This refines the 2026-10-16 disposition-in-play rule: proposals still count as open items until accepted.
 - In Polish, Copy also asks first when no disposition is picked, not only when `___` is left in the text.
 No DOC data change and no version bump.
+
+**v0.13 — 2026-10-26.** PCR-07: removed a real nurse's name from the §26 worked sample ("report given to RN ___"). Wording-only, no DOC data change and no version bump.
