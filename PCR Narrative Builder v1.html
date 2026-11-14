@@ -4178,8 +4178,19 @@ function openModal(cfg) {
   const root = document.getElementById("modal-root");
   root.innerHTML = "";
   root.hidden = false;
+  // the page behind the scrim goes inert: no clicks, no Tab, and a focus() from a
+  // handler still running (Return's advance) cannot land in the worksheet
+  const benched = Array.prototype.filter.call(document.body.children, function (n) {
+    return n !== root && !n.inert;
+  });
+  benched.forEach(function (n) { n.inert = true; });
   const card = el("div", "modal-card");
-  card.appendChild(el("div", "modal-title", cfg.title || ""));
+  card.setAttribute("role", "dialog");
+  card.setAttribute("aria-modal", "true");
+  card.setAttribute("aria-labelledby", "modal-title");
+  const title = el("div", "modal-title", cfg.title || "");
+  title.id = "modal-title";
+  card.appendChild(title);
   const body = el("div", "modal-body");
   if (cfg.bodyNode) body.appendChild(cfg.bodyNode);
   else body.appendChild(el("p", null, cfg.body || ""));
@@ -4187,6 +4198,7 @@ function openModal(cfg) {
   const row = el("div", "modal-actions");
   const close = function () {
     root.hidden = true; root.innerHTML = "";
+    benched.forEach(function (n) { n.inert = false; });
     document.removeEventListener("keydown", onKey);
     // before onClose: a rebuild only keeps focus in the worksheet if it is already there
     if (!refocus(opener)) restoreWorksheetFocus();
