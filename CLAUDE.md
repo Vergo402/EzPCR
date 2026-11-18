@@ -20,7 +20,7 @@ the same PR.
 
 ## Hard runtime rules
 - No `localStorage` (sessionStorage drafts only), no network calls, no PHI persistence,
-  light mode only, Firefox + Chrome on the rig laptop. `grep -c localStorage` must stay 0.
+  light mode only, Firefox + Chrome on Alex's own Mac (no rig laptop). `grep -c localStorage` must stay 0.
 - ES5-style JS matching the file; keep everything in the single HTML file.
 
 ## Engine map (names, not line numbers)

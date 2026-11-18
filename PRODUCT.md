@@ -9,9 +9,9 @@ web
 ## Users
 
 One user: Alex Vergo, paramedic at Cortlandt-Peekskill Regional Paramedic Services
-(CPRPS, 35M units). He writes the narrative after the call, at the hospital or back in
-quarters, on the rig laptop (Firefox and Chrome), with patient handoff already done. No
-second user is planned; wording and defaults are his own rulings.
+(CPRPS, 35M units). He writes the narrative after the call, back in quarters at the
+station, on his own Mac (Firefox and Chrome), with patient handoff already done. No rig
+laptop is used. No second user is planned; wording and defaults are his own rulings.
 
 ## Product Purpose
 
